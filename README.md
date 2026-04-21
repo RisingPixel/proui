@@ -11,10 +11,4 @@
  then run toos/release.zsh [version number], e.g. toos/release.zsh 1.821
 
  ## Latest Release
- - #### [1.822](https://github.com/ConstructFund/proui/releases/download/1.822/ProUI_v1.822.zip) - fix scrollbar divide by zero
- ## Older Releases
- - #### [1.821](https://github.com/ConstructFund/proui/releases/download/1.821/ProUI_v1.821.zip) - fix audio (e.g. click)
- - #### [1.820](https://github.com/ConstructFund/proui/releases/download/1.820/ProUI_v1.820.zip) - r392+ compatability fix aekiro_gameobjectBehaviorBase for new SDK
- - #### [1.819](https://github.com/ConstructFund/proui/releases/download/1.819/ProUI_v1.819.zip) - r389+ compatability fix, also backward compatible to r388-
- - #### [1.818](https://github.com/ConstructFund/proui/releases/download/1.818/ProUI_v1.818.zip) - Only for r389+, r389 compatability fix
- - #### [1.817](https://github.com/ConstructFund/proui/releases/download/1-817/ProUI_v1.817.zip) - Last release from Aekiro
+ - #### [2.000](https://github.com/RisingPixel/proui/releases/download/v2.0.0/ProUI_v2.000.zip) - Migration to SDK 2
