@@ -2,10 +2,9 @@
 "use strict";
 
 {
-	const SDK = self.SDK;
-	const lang = self.lang;
+	const SDK = globalThis.SDK;
+	const lang = globalThis.lang;
 	const BEHAVIOR_ID = "aekiro_checkbox";
-	const BEHAVIOR_VERSION = "1.822";
 	const BEHAVIOR_CATEGORY = "other";
 	const BEHAVIOR_CLASS = SDK.Behaviors.aekiro_checkbox = class aekiro_checkbox extends SDK.IBehaviorBase
 	{
@@ -15,13 +14,10 @@
 			SDK.Lang.PushContext("behaviors." + BEHAVIOR_ID.toLowerCase());
 			this._info.SetName(lang(".name"));
 			this._info.SetDescription(lang(".description"));
-			this._info.SetVersion(BEHAVIOR_VERSION);
 			this._info.SetCategory(BEHAVIOR_CATEGORY);
 			this._info.SetAuthor("Aekiro");
 			this._info.SetHelpUrl(lang(".help-url"));
 			this._info.SetIsOnlyOneAllowed(true);
-
-			this._info.SetSupportedRuntimes(["c3"]);	// c3 for stubs only!
 
 			SDK.Lang.PushContext(".properties");
 			this._info.SetProperties([

@@ -3,38 +3,39 @@
    
     const DOM_COMPONENT_ID = "aekiro_remoteSprite_dom";
 
-    C3.Plugins.aekiro_remoteSprite.Instance = class RemoteSpriteInstance extends C3.SDKDOMInstanceBase
+    C3.Plugins.aekiro_remoteSprite.Instance = class RemoteSpriteInstance extends globalThis.ISDKDOMInstanceBase
     {
-        constructor(inst, properties)
-        {
-            super(inst, DOM_COMPONENT_ID);
+        constructor()
+		{
+			super();
+			const properties = this._getInitProperties();
         }
 
-        Release()
+        _release()
         {
-            super.Release();
+            super._release();
         }
 
-        Draw(renderer)
+        _draw(renderer)
         {
 
         }
 
 
         
-        SaveToJson()
+        _saveToJson()
         {
             return {
                 // data to be saved for savegames
             };
         }
 
-        LoadFromJson(o)
+        _loadFromJson(o)
         {
             // load state for savegames
         }
 
-        GetDebuggerProperties()
+        _getDebuggerProperties()
         {
             return [
             {

@@ -1,17 +1,17 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_dialog = class aekiro_dialogBehavior extends C3.SDKBehaviorBase
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_dialog = class aekiro_dialogBehavior extends globalThis.ISDKBehaviorBase
 	{
-		constructor(opts)
+		constructor()
 		{
-			super(opts);
+			super();
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	};
 }

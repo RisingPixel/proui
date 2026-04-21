@@ -1,14 +1,15 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	const HORIZONTAL = 0;
 	const VERTICAL = 1;
-	C3.Behaviors.aekiro_sliderbar.Instance = class aekiro_sliderbarInstance extends C3.SDKBehaviorInstanceBase
+	C3.Behaviors.aekiro_sliderbar.Instance = class aekiro_sliderbarInstance extends globalThis.ISDKBehaviorInstanceBase
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 			
 			//properties
 			if (properties){
@@ -22,18 +23,18 @@
 				this.direction = properties[7];
 			}
 			
-			this.proui = this.GetRuntime().GetSingleGlobalObjectClassByCtor(C3.Plugins.aekiro_proui);
+			this.proui = globalThis.IPlugin.getByConstructor(C3.Plugins.aekiro_proui);
 			if(this.proui){
-				this.proui = this.proui.GetSingleGlobalInstance().GetSdkInstance();
+				this.proui = this.proui.getSingleGlobalInstance();
 			}
 			
-			this.inst = this.GetObjectInstance();
-			this.wi = this.GetWorldInfo();
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_sliderbar = this;
+			this.inst = null;
+			this.wi = null;
 			this.goManager = globalThis.aekiro_goManager;
 			this.aekiro_dialogManager = globalThis.aekiro_dialogManager;
-			this.goManager.eventManager.on("childrenRegistred",() => this.init(),{"once":true});
-			this.initSounds();
+			this.isInit = false;
+			this._isCloneListenerAttached = false;
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() => this.init());
 			//******************************************
 			this.isSliderBarTouched = false;
 			this.isSliding = false;
@@ -41,35 +42,62 @@
 					
 		}
 	
-		PostCreate(){
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
-			if(this.aekiro_gameobject){
-				this.aekiro_gameobject.eventManager.on("cloned",() => this.init(),{"once":true});
+		_postCreate(){
+			this.inst = this.instance;
+			this.wi = this.instance;
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_sliderbar = this;
+			this.initSounds();
+		}
+
+		ensureGameObject(){
+			let inst = this.inst;
+			if(!inst){
+				try{
+					inst = this.instance;
+				}catch(_err){
+					return null;
+				}
 			}
+			if(!inst){
+				return null;
+			}
+			const currentGameObject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+			if(currentGameObject && currentGameObject !== this.aekiro_gameobject){
+				this.aekiro_gameobject = currentGameObject;
+				if(!this._isCloneListenerAttached && this.aekiro_gameobject.eventManager){
+					this.aekiro_gameobject.eventManager.on("cloned",() => this.init(),{"once":true});
+					this._isCloneListenerAttached = true;
+				}
+			}
+			return this.aekiro_gameobject;
 		}
 		
 		initSounds(){
-			var map = this.GetObjectInstance().GetUnsavedDataMap();
+			var map = globalThis.Aekiro.getInstanceData(this.instance);
 			if(!map.audioSources){
 				map.audioSources = {};
 			}
 			var AudioSource = globalThis.AudioSource;
 	
 			this.audioSources = map.audioSources;
-			this.audioSources.onValueChangedSound = new AudioSource(this.onValueChangedSound,this.GetRuntime());
+			this.audioSources.onValueChangedSound = new AudioSource(this.onValueChangedSound,this.runtime);
 		}
 
 		init (){
-			if(!this.aekiro_gameobject){
-				return;	
+			if(this.isInit){
+				return true;
+			}
+			if(!this.ensureGameObject()){
+				this.isInit = false;
+				return false;	
 			}
 			
 			this.sliderButton = this.aekiro_gameobject.children[0];
 			if(!this.sliderButton){
-				console.error("ProUI-SLIDERBAR: Slider button not found, please check its name");
-				return;
+				this.isInit = false;
+				return false;
 			}
-			this.sliderWi = this.sliderButton.GetWorldInfo();
+			this.sliderWi = this.sliderButton;
 			
 			//Place the slider
 			let startX,startY;
@@ -97,14 +125,16 @@
 			//
 			this.wi.SetWidth_old2 = this.wi.SetWidth;
 			this.wi.SetWidth = function(v,onlyNode){
-				var prev = this.GetWidth();
+				var prev = this.width;
 				this.SetWidth_old2(v,onlyNode);
 				if(v != prev){
-					this.GetInstance().GetUnsavedDataMap().aekiro_sliderbar.OnSizeChanged();
+					globalThis.Aekiro.getInstanceData(this.GetInstance()).aekiro_sliderbar.OnSizeChanged();
 				}
 			};
 
 			this.setValue(this.value);
+			this.isInit = true;
+			return true;
 		}
 
 		getBarLength(){
@@ -173,13 +203,16 @@
 		}
 		
 		OnAnyInputDown(x, y){
+			if(!this.isInit && !this.init()){
+				return;
+			}
 			if(!this.isEnabled || !this.isInteractible(x,y))return;
 			
 			this.prevValue = this.value;
 			
 			if(this.direction == HORIZONTAL){
 				this.sliderOffsetX = 0;
-				if(this.sliderButton && this.sliderButton.GetWorldInfo().ContainsPoint(x, y)){
+				if(this.sliderButton && this.sliderButton.ContainsPoint(x, y)){
 					this.sliderOffsetX = x - this.sliderWi.GetX();
 					this.isSliding = true;
 				}
@@ -188,7 +221,7 @@
 				}
 			}else{
 				this.sliderOffsetY = 0;
-				if(this.sliderButton && this.sliderButton.GetWorldInfo().ContainsPoint(x, y)){
+				if(this.sliderButton && this.sliderButton.ContainsPoint(x, y)){
 					this.sliderOffsetY = this.sliderWi.GetY() - y;
 					this.isSliding = true;
 				}
@@ -200,6 +233,9 @@
 		}
 		
 		OnAnyInputMove(x,y) {
+			if(!this.isInit && !this.init()){
+				return;
+			}
 			if(this.isSliding){
 				if(this.direction == HORIZONTAL){
 					this.onX(x);
@@ -210,6 +246,9 @@
 		}
 		
 		onX (touchX){
+			if(!this.isInit && !this.init()){
+				return;
+			}
 			var min_x = this.wi.GetBoundingBox().getLeft()+this.padding;
 			var max_x = this.wi.GetBoundingBox().getRight()-this.padding;
 			
@@ -244,6 +283,9 @@
 			
 		
 		onY (touchY){
+			if(!this.isInit && !this.init()){
+				return;
+			}
 			const min_y = this.wi.GetBoundingBox().getBottom()-this.padding;
 			const max_y = this.wi.GetBoundingBox().getTop()+this.padding;
 			const barLength = this.getBarLength();
@@ -276,6 +318,9 @@
 		}
 		
 		OnAnyInputUp(x, y) {
+			if(!this.isInit && !this.init()){
+				return;
+			}
 			if(!this.isEnabled){
 				return;
 			}
@@ -284,7 +329,7 @@
 			
 			if(this.prevValue != this.value){
 				this.audioSources.onValueChangedSound.play();
-				this.Trigger(C3.Behaviors.aekiro_sliderbar.Cnds.OnChanged);
+				this._trigger(C3.Behaviors.aekiro_sliderbar.Cnds.OnChanged);
 			}
 		}
 		
@@ -301,12 +346,16 @@
 			return !isUnder;
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 			"isEnabled": this.isEnabled,
@@ -317,7 +366,7 @@
 			};
 		}
 	
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			this.isEnabled = o["isEnabled"];
 			this.value  = o["value"];

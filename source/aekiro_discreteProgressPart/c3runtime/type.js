@@ -1,20 +1,19 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_discreteProgressPart.Type = class aekiro_discreteProgressPartType extends C3.SDKBehaviorTypeBase
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_discreteProgressPart.Type = class aekiro_discreteProgressPartType extends globalThis.ISDKBehaviorTypeBase
 	{
-		constructor(behaviorType)
+		constructor() {
+            super();
+        }
+		
+		_release()
 		{
-			super(behaviorType);
+			super._release();
 		}
 		
-		Release()
-		{
-			super.Release();
-		}
-		
-		OnCreate()
+		_onCreate()
 		{	
 		}
 	};

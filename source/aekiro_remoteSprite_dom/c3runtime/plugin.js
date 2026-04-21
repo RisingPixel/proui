@@ -2,16 +2,16 @@
 {
     const DOM_COMPONENT_ID = "aekiro_remoteSprite_dom";
 
-    C3.Plugins.aekiro_remoteSprite = class RemoteSpritePlugin extends C3.SDKDOMPluginBase
+    C3.Plugins.aekiro_remoteSprite = class RemoteSpritePlugin extends globalThis.ISDKDOMPluginBase
     {
-        constructor(opts)
-        {
-            super(opts, DOM_COMPONENT_ID);
+        constructor()
+		{
+			super();
         }
 
-        Release()
+        _release()
         {
-            super.Release();
+            super._release();
         }
     };
 }

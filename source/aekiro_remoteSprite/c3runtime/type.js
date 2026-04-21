@@ -1,32 +1,32 @@
 "use strict";
 {
-    const C3 = self.C3;
-    C3.Plugins.aekiro_remoteSprite.Type = class RemoteSpriteType extends C3.SDKTypeBase
+    const C3 = globalThis.C3;
+    C3.Plugins.aekiro_remoteSprite.Type = class RemoteSpriteType extends globalThis.ISDKObjectTypeBase
     {
-        constructor(objectClass)
-        {
-            super(objectClass);
+        constructor()
+		{
+			super();
         }
 
-        Release()
+        _release()
         {
-            super.Release();
+            super._release();
         }
 
-        OnCreate()
+        _onCreate()
         {
-            this.GetImageInfo().LoadAsset(this._runtime);
+            this.GetImageInfo().LoadAsset(this.runtime);
         }
 
-        LoadTextures(renderer)
+        _loadTextures(renderer)
         {
             return this.GetImageInfo().LoadStaticTexture(renderer,
             {
-                linearSampling: this._runtime.IsLinearSampling()
+                linearSampling: this.runtime.IsLinearSampling()
             });
         }
 
-        ReleaseTextures()
+        _releaseTextures()
         {
             this.GetImageInfo().ReleaseTexture();
         }

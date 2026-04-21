@@ -1,13 +1,13 @@
 "use strict";
 
 {
-    const C3 = self.C3;
+    const C3 = globalThis.C3;
     
     C3.Behaviors.aekiro_gameobject.Acts = {
         Clone(layer,x,y,name,parentName){
             var template = this.getTemplate();
             var inst = globalThis.aekiro_goManager.clone(template,name,parentName,layer,x,y);
-            inst.GetUnsavedDataMap().aekiro_gameobject.updateZindex();
+            globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.updateZindex();
             //this.cloneUID = inst.uid;
         },
         SetName(name){
@@ -35,8 +35,6 @@
         RemoveAllchildren(){
             this.removeAllChildren();
         },
-
-
         
         SetOpacity(v){
             this.applyActionToHierarchy(this.acts.SetOpacity,v);

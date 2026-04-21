@@ -2,11 +2,10 @@
 "use strict";
 
 {
-	const SDK = self.SDK;
-	const C3 = self.C3;
-	const lang = self.lang;
+	const SDK = globalThis.SDK;
+	const C3 = globalThis.C3;
+	const lang = globalThis.lang;
 	const PLUGIN_ID = "aekiro_proui";
-	const PLUGIN_VERSION = "1.822";
 	const PLUGIN_CATEGORY = "other";
 
 	let app = null;
@@ -19,7 +18,6 @@
 			SDK.Lang.PushContext("plugins." + PLUGIN_ID.toLowerCase());
 			this._info.SetName(lang(".name"));
 			this._info.SetDescription(lang(".description"));
-			this._info.SetVersion(PLUGIN_VERSION);
 			this._info.SetCategory(PLUGIN_CATEGORY);
 			this._info.SetAuthor("Aekiro");
 			this._info.SetHelpUrl(lang(".help-url"));
@@ -28,8 +26,7 @@
 			this._info.SetSupportsEffects(false);
 			this._info.SetMustPreDraw(false);
 			this._info.SetCanBeBundled(true);
-
-			this._info.SetSupportedRuntimes(["c3"]);	// c3 for stubs only!
+			this._info.SetDOMSideScripts(["c3runtime/domSide.js"]);
 
 			SDK.Lang.PushContext(".properties");
 			this._info.SetProperties([

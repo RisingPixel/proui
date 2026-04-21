@@ -29,9 +29,6 @@
 			this._info.SetHelpUrl(lang(".help-url"));
 			this._info.SetIsOnlyOneAllowed(true);
 			
-			// Support both C2 and C3 runtimes
-			this._info.SetSupportedRuntimes(["c2", "c3"]);
-			
 			SDK.Lang.PushContext(".properties");
 			
 			this._info.SetProperties([

@@ -1,29 +1,30 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_translationB.Instance = class aekiro_translationBInstance extends C3.SDKBehaviorInstanceBase
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_translationB.Instance = class aekiro_translationBInstance extends globalThis.ISDKBehaviorInstanceBase
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 			this.key = properties[0];
-			
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_translation = this;
-			this.isInstanceOfSprite = this.GetObjectInstance().GetPlugin().constructor == C3.Plugins.Sprite;
+
+			this.isInstanceOfSprite = false;
 		}
 
-		PostCreate(){
-			this.sdkInstance = this.GetObjectInstance().GetSdkInstance();
-			this.sdkInstance_acts = this.GetObjectInstance().GetPlugin().constructor.Acts;
-			this.sdkInstance_exps = this.GetObjectInstance().GetPlugin().constructor.Exps;
+		_postCreate(){
+			this.inst = this.instance;
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_translation = this;
+			globalThis.Aekiro.registerBehaviorInstance("aekiro_translationB", this.instance);
+			this.isInstanceOfSprite = this.instance.plugin.constructor == C3.Plugins.Sprite;
 		}
 	
 		updateView(v){
 			if(this.isInstanceOfSprite){
 				this.setFrameAnim(v);
 			}else{
-				this.sdkInstance.CallAction(this.sdkInstance_acts.SetText,v);
+				this.instance.text = v;
 			}
 		}
 		
@@ -60,27 +61,31 @@
 			var anim = this.frameAnim["a"];
 			var frame = this.frameAnim["f"];
 			//console.log(anim+"**"+frame);
-			if(anim!=undefined){
-				this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnim,anim,0);
+			if(typeof anim === "string" && anim.length){
+				this.instance.setAnimation(anim, "beginning");
 			}
 			if(frame!=undefined){
-				this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnimFrame,frame,0);
+				this.instance.animationFrame = frame;
 			}
 		}
 	
-		Release()
+		_release()
 		{
-			super.Release();
+			const inst = this.inst || this.instance;
+			if(inst){
+				globalThis.Aekiro.unregisterBehaviorInstance("aekiro_translationB", inst);
+			}
+			super._release();
 		}
 		
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"key" : this.key
 			};
 		}
 
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			this.key = o["key"];
 		}

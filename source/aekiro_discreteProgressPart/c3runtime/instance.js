@@ -1,11 +1,12 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_discreteProgressPart.Instance = class aekiro_discreteProgressPartInstance extends C3.SDKBehaviorInstanceBase {
-		constructor(behInst, properties)
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_discreteProgressPart.Instance = class aekiro_discreteProgressPartInstance extends globalThis.ISDKBehaviorInstanceBase {
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 	
 			//properties
 			this.index  = properties[0];
@@ -13,16 +14,12 @@
 			this.frameAnim_05  = properties[2];
 			this.frameAnim_1  = properties[3];
 			//**************************
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_discreteProgressPart = this;
 			this.goManager = globalThis.aekiro_goManager;
 			this.frameAnim = [];		
 		}
 	
-		PostCreate(){
-			this.sdkInstance = this.GetObjectInstance().GetSdkInstance();
-			this.sdkInstance_exps = this.GetObjectInstance().GetPlugin().constructor.Exps;
-			this.sdkInstance_acts = this.GetObjectInstance().GetPlugin().constructor.Acts;
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
+		_postCreate(){
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_discreteProgressPart = this;
 			//**************************
 			this.onPropsLoaded();
 		}
@@ -39,8 +36,8 @@
 				animationName : null
 			};
 			
-			this.initProps.animationFrame = this.initProps.animationFrame===null?this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationFrame):this.initProps.animationFrame;
-			this.initProps.animationName = this.initProps.animationName || this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationName);	
+			this.initProps.animationFrame = this.initProps.animationFrame===null ? this.instance.animationFrame : this.initProps.animationFrame;
+			this.initProps.animationName = this.initProps.animationName || this.instance.animationName;	
 			
 		}
 		
@@ -54,10 +51,10 @@
 			//console.log(this.frameAnim);
 			var anim = this.frameAnim[state]["a"];
 			var frame = this.frameAnim[state]["f"];
-			if(anim){
-				this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnim,anim,0);
+			if(typeof anim === "string" && anim.length){
+				this.instance.setAnimation(anim, "beginning");
 			}
-			this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnimFrame,frame,0);
+			this.instance.animationFrame = frame;
 		}
 		
 		
@@ -87,12 +84,12 @@
 			return res;
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"index" : this.index,
@@ -102,7 +99,7 @@
 			};
 		}
 	
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			this.index  = o["index"];
 			this.frameAnim_0  = o["frameAnim_0"];

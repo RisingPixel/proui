@@ -1,25 +1,22 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_scrollView.Instance = class aekiro_scrollViewInstance extends C3.SDKBehaviorInstanceBase {
-		constructor(behInst, properties)
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_scrollView.Instance = class aekiro_scrollViewInstance extends globalThis.ISDKBehaviorInstanceBase {
+		constructor()
 		{
-			super(behInst);
-			this.proui = this.GetRuntime().GetSingleGlobalObjectClassByCtor(C3.Plugins.aekiro_proui);
+			super();
+			const properties = this._getInitProperties();
+			this.proui = globalThis.IPlugin.getByConstructor(C3.Plugins.aekiro_proui);
 			if(this.proui){
-				this.proui = this.proui.GetSingleGlobalInstance().GetSdkInstance();
+				this.proui = this.proui.getSingleGlobalInstance();
 			}
 			//**************************
-			this._SetVisible = this.GetObjectInstance().GetPlugin().constructor.Acts.SetVisible;
-			this.runtime = this.GetRuntime();
 			this.aekiro_scrollViewManager = globalThis.aekiro_scrollViewManager;
-			this.aekiro_scrollViewManager.add(this.GetObjectInstance());
 			this.aekiro_dialogManager = globalThis.aekiro_dialogManager;
 			this.goManager = globalThis.aekiro_goManager;
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_scrollView = this;
-			this.inst = this.GetObjectInstance();
-			this.wi = this.GetWorldInfo();
+			this.inst = null;
+			this.wi = null;
 			//properties
 			if (properties){
 				//properties
@@ -81,17 +78,26 @@
 			//********************
 
 	
-			this.goManager.eventManager.on("childrenRegistred",() => {
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() => {
 				this.init();
-			},{"once":true});
+			});
 			
 			
 			this.SetForceOwnTextureListener = this.goManager.eventManager.on("childrenRegistred",() => {
-				this.wi.GetLayer().SetForceOwnTexture(true);
+				if(this.wi){
+					this.wi.GetLayer().SetForceOwnTexture(true);
+				}
 			});
 			
 
 			
+		}
+
+		_postCreate(){
+			this.inst = this.instance;
+			this.wi = this.instance;
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_scrollView = this;
+			this.aekiro_scrollViewManager.add(this.inst);
 		}
 	
 	
@@ -99,7 +105,10 @@
 		
 		init(){
 			if(this.isInit){
-				return;
+				return true;
+			}
+			if(!this.wi){
+				return false;
 			}
 			this.isVScrollEnabled = (this.direction == 0) || (this.direction == 2);
 			this.isHScrollEnabled = (this.direction == 1) || (this.direction == 2);
@@ -113,34 +122,33 @@
 				this.hScrollBar = this.getPart(this.hScrollBarUID,"horizontal scrollbar");
 
 				this.content = this.getPart(this.contentUID,"content",true);	
-				var contentWi = this.content.GetWorldInfo();
-				this.contentWi = this.content.GetWorldInfo();			
+				var contentWi = this.content;
+				this.contentWi = this.content;			
 			}catch(e){
 				console.error(e)
 				this.isEnabled = false;
-				return;
+				return false;
 			}
 			
 
 	
 			//listening for content size changes
-			this.content.GetUnsavedDataMap().aekiro_scrollView = this;
+			globalThis.Aekiro.getInstanceData(this.content).aekiro_scrollView = this;
 			this.contentWi.SetHeight_old2 = this.contentWi.SetHeight;
 			this.contentWi.SetHeight = function (v,onlyNode){
 				this.SetHeight_old2(v,onlyNode);
-				this.GetInstance().GetUnsavedDataMap().aekiro_scrollView.OnSizeChanged();
+				globalThis.Aekiro.getInstanceData(this.GetInstance()).aekiro_scrollView.OnSizeChanged();
 			};
 			this.contentWi.SetWidth_old2 = this.contentWi.SetWidth;
 			this.contentWi.SetWidth = function (v,onlyNode){
 				this.SetWidth_old2(v,onlyNode);
-				this.GetInstance().GetUnsavedDataMap().aekiro_scrollView.OnSizeChanged();
+				globalThis.Aekiro.getInstanceData(this.GetInstance()).aekiro_scrollView.OnSizeChanged();
 			};
 	
 			//new items should have the right blend mode
-			this.content.GetUnsavedDataMap().aekiro_gameobject.eventManager.on("childrenAdded",function(inst){
+			globalThis.Aekiro.getInstanceData(this.content).aekiro_gameobject.eventManager.on("childrenAdded",function(inst){
 				if(inst){
-					//inst.GetUnsavedDataMap().aekiro_gameobject.SetBlendMode(9);	
-					inst.GetUnsavedDataMap().aekiro_gameobject.applyActionToHierarchy(inst.GetUnsavedDataMap().aekiro_gameobject.acts.SetEffect,9);
+					globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.SetBlendMode(9);
 				}
 			});
 	
@@ -161,41 +169,41 @@
 	
 			//Masking the content
 			this.wi.GetLayer().SetForceOwnTexture(true);
-			this.GetRuntime().UpdateRender();
+			this.runtime.UpdateRender();
 				
-			//this.content.GetUnsavedDataMap().aekiro_gameobject.SetBlendMode(9);	
-			this.content.GetUnsavedDataMap().aekiro_gameobject.applyActionToHierarchy(this.content.GetUnsavedDataMap().aekiro_gameobject.acts.SetEffect,9);
+			globalThis.Aekiro.getInstanceData(this.content).aekiro_gameobject.SetBlendMode(9);
 	
 			//snap the hSlider to the left of the hScrollBar (user is left to manually place hslider verticaly)
 			if(this.hSlider && this.hScrollBar){
-				this.hSliderWi = this.hSlider.GetWorldInfo();
-				this.hScrollBarWi = this.hScrollBar.GetWorldInfo();
+				this.hSliderWi = this.hSlider;
+				this.hScrollBarWi = this.hScrollBar;
 				
 				var x = this.hScrollBarWi.GetBoundingBox().getLeft()+(this.hSliderWi.GetX()-this.hSliderWi.GetBoundingBox().getLeft());
 				this.hSliderWi.SetX(x);
 				this.hSliderWi.SetBboxChanged();
 	
-				this.hScrollBar.GetSdkInstance().CallAction(this.hScrollBar.GetPlugin().constructor.Acts.MoveToTop);
-				this.hSlider.GetSdkInstance().CallAction(this.hSlider.GetPlugin().constructor.Acts.MoveToTop);
+				this.hScrollBar.moveToTop();
+				this.hSlider.moveToTop();
 			}
 	
 			//snap the vSlider to the left of the vScrollBar (user is left to manually place vslider horizontaly)
 			if(this.vSlider && this.vScrollBar){
-				this.vSliderWi = this.vSlider.GetWorldInfo();
-				this.vScrollBarWi = this.vScrollBar.GetWorldInfo();
+				this.vSliderWi = this.vSlider;
+				this.vScrollBarWi = this.vScrollBar;
 				
 				var y = this.vScrollBarWi.GetBoundingBox().getTop()+(this.vSliderWi.GetY()-this.vSliderWi.GetBoundingBox().getTop());
 				this.vSliderWi.SetY(y);
 				this.vSliderWi.SetBboxChanged();
 	
-				this.vScrollBar.GetSdkInstance().CallAction(this.vScrollBar.GetPlugin().constructor.Acts.MoveToTop);
-				this.vSlider.GetSdkInstance().CallAction(this.vSlider.GetPlugin().constructor.Acts.MoveToTop);
+				this.vScrollBar.moveToTop();
+				this.vSlider.moveToTop();
 			}
 			
 			//console.log("init scrollView");
 			this.isInit = true;
 			
-			this._StartTicking();
+			this._setTicking(true);
+			return true;
 		}
 		
 
@@ -208,7 +216,7 @@
 			var p = this.goManager.gos[name];
 			if(p){
 				if(!this.proui.isTypeValid(p,[C3.Plugins.Sprite,C3.Plugins.NinePatch,C3.Plugins.TiledBg])){
-					throw new Error("ProUI-ScrollView-UID = "+this.GetObjectInstance().GetUID()+" : The "+errorLabel+" of the scrollView can only be a Sprite, TiledBackground Or 9-patch object.");
+					throw new Error("ProUI-ScrollView-UID = "+this.instance.GetUID()+" : The "+errorLabel+" of the scrollView can only be a Sprite, TiledBackground Or 9-patch object.");
 				}
 				return p;
 			}else{
@@ -226,19 +234,13 @@
 			return;
 		}
 		
-		PostCreate(){
-			this.sdkInstance_callAction = this.GetObjectInstance().GetSdkInstance().CallAction;
-			this.sdkInstance_acts = this.GetObjectInstance().GetPlugin().constructor.Acts;
-			//this.init();
-		}
-		
 		OnMouseWheel(x,y,deltaY){
 			if(this.isEnabled && this.isVScrollEnabled && this.isContentScrollableV && this.isMouseScroll
 			&& this.isInteractible(x,y) && this.wi.ContainsPoint(x,y)){
 				this.scroll.scrollToX = false;
 				this.scroll.scrollToY = false;
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.onWheelStarted = true;
 				var dir = (deltaY > 0 ? -1 : 1);
 				
@@ -267,7 +269,7 @@
 			}
 			
 			//not interactible if there's a scrollview on top
-			var isOverlaped = this.aekiro_scrollViewManager.isOverlaped(this.GetObjectInstance(),x,y);
+			var isOverlaped = this.aekiro_scrollViewManager.isOverlaped(this.instance,x,y);
 	
 			//console.log(isUnder,isOverlaped);
 			return !isUnder && !isOverlaped;
@@ -304,7 +306,7 @@
 				this.scroll.touchStartY = y;
 	
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.scroll.scrollToX = false;
 				this.scroll.scrollToY = false;
 			}
@@ -314,7 +316,7 @@
 				this.scroll.touchStartX = x;
 				
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.scroll.scrollToX = false;
 				this.scroll.scrollToY = false;
 			}
@@ -337,7 +339,7 @@
 	
 			this.onSliderTouchStarted = true;
 			this.scroll.isIdle = true;
-			this._StopTicking();
+			this._setTicking(false);
 	
 			//force content to bound if it's being bounded.
 			this.boundContent();
@@ -517,7 +519,7 @@
 				this.scroll.scrollToTargetY = this.contentWi.GetY() + (viewportCenterY-targetY);
 				this.scroll.scrollToY = true;
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.onScrollToStarted = true;
 			}
 	
@@ -531,7 +533,7 @@
 				this.scroll.scrollToTargetX = this.contentWi.GetX() + (viewportCenterX-targetX);
 				this.scroll.scrollToX = true;
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.onScrollToStarted = true;
 			}
 			
@@ -559,7 +561,7 @@
 				this.scroll.scrollToTargetY = this.contentWi.GetY() - distanceY;
 				this.scroll.scrollToY = true;
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.onScrollToStarted = true;
 			}
 
@@ -571,7 +573,7 @@
 				this.scroll.scrollToTargetX = this.contentWi.GetX() - distanceX;
 				this.scroll.scrollToX = true;
 				this.scroll.isIdle = false;
-				this._StartTicking();
+				this._setTicking(true);
 				this.onScrollToStarted = true;
 			}
 			
@@ -602,7 +604,7 @@
 	
 			for (var i = 0, l= parts.length; i < l; i++) {
 				if(parts[i]){
-					parts[i].GetSdkInstance().CallAction(parts[i].GetPlugin().constructor.Acts.MoveToTop);
+					parts[i].moveToTop();
 				}
 			}
 		}
@@ -632,11 +634,11 @@
 			return this.isTouchMoving; //|| Math.abs(this.scroll.decelerationVelocityX)>1 || Math.abs(this.scroll.decelerationVelocityY)>1;	
 		}
 		
-		Tick(){
+		_tick(){
 			//console.log("tick");
 			//console.log(Math.abs(this.scroll.decelerationVelocityY));
 			if(this.scroll.isIdle || !this.content || !this.isEnabled){
-				this._StopTicking();
+				this._setTicking(false);
 				//console.log("Scroll idle");
 			}		
 			//****************************************
@@ -732,13 +734,20 @@
 			}
 		}
 	
-		Release(){
-			this.aekiro_scrollViewManager.remove(this.GetObjectInstance());
-			this.goManager.eventManager.removeListener(this.SetForceOwnTextureListener);
-			super.Release();
+		_release(){
+			this.aekiro_scrollViewManager.remove(this.inst || this.instance);
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
+			if(this.SetForceOwnTextureListener){
+				this.goManager.eventManager.removeListener(this.SetForceOwnTextureListener);
+				this.SetForceOwnTextureListener = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson(){
+		_saveToJson(){
 			return {
 				"isEnabled" : this.isEnabled,
 				"direction" : this.direction,
@@ -754,7 +763,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.isEnabled = o["isEnabled"];
 			this.direction = o["direction"];
 			this.isSwipeScrollEnabled = o["isSwipeScrollEnabled"];

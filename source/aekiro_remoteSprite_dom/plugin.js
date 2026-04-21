@@ -2,7 +2,6 @@
 {
 
     const PLUGIN_ID = "aekiro_remoteSprite";
-    const PLUGIN_VERSION = "1.1";
     const PLUGIN_CATEGORY = "general";
 
     const PLUGIN_CLASS = SDK.Plugins.aekiro_remoteSprite = class RemoteSpriteIPlugin extends SDK.IPluginBase
@@ -15,7 +14,6 @@
 
             this._info.SetName(lang(".name"));
             this._info.SetDescription(lang(".description"));
-            this._info.SetVersion(PLUGIN_VERSION);
             this._info.SetCategory(PLUGIN_CATEGORY);
             this._info.SetAuthor("Mikal");
             this._info.SetHelpUrl(lang(".help-url"));
@@ -35,8 +33,6 @@
             this._info.SetCanBeBundled(true); 
             
             this._info.SetDOMSideScripts(["c3runtime/domSide.js"]);
-
-            this._info.SetSupportedRuntimes(["c3"]);
 
             SDK.Lang.PushContext(".properties");
 

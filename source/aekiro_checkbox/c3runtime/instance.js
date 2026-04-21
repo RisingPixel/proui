@@ -1,11 +1,13 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	C3.Behaviors.aekiro_checkbox.Instance = class aekiro_checkboxInstance extends globalThis.Aekiro.checkbox
 	{
-		constructor(behInst, properties){
-			super(behInst,properties);
+		constructor()
+		{
+			super();
+			const properties = this._getInitProperties();
 			
 			//properties
 			this.isEnabled = properties[0];
@@ -35,39 +37,42 @@
 			this.focusAnimationFactor = properties[19];
 
 			this.ignoreInput = properties[20];
-			
-			this.checkbox_constructor();
+		}
 
+		_postCreate()
+		{
+			this.checkbox_constructor();
+			super._postCreate();
 		}
 		
 		
 		OnAnyInputUpC(){
 			this.setValue(1-this.value);
-			this.Trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnClicked);
+			this._trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnClicked);
 		}
 		
 		OnMouseEnterC(){
-			this.Trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnMouseEnter);
+			this._trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnMouseEnter);
 		}
 		
 		OnMouseLeaveC(){
-			this.Trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnMouseLeave);
+			this._trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnMouseLeave);
 		}
 
 		OnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnFocused);
+			this._trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnFocused);
 		}
 
 		OnUnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnUnFocused);
+			this._trigger(C3.Behaviors.aekiro_checkbox.Cnds.OnUnFocused);
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"isEnabled":this.isEnabled,
@@ -98,7 +103,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.isEnabled = o["isEnabled"];
 			this.value  = o["value"];
 			

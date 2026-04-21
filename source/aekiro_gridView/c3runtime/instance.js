@@ -1,16 +1,17 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_gridView.Instance = class aekiro_gridViewInstance extends C3.SDKBehaviorInstanceBase
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_gridView.Instance = class aekiro_gridViewInstance extends globalThis.ISDKBehaviorInstanceBase
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 			
-			this.proui = this.GetRuntime().GetSingleGlobalObjectClassByCtor(C3.Plugins.aekiro_proui);
+			this.proui = globalThis.IPlugin.getByConstructor(C3.Plugins.aekiro_proui);
 			if(this.proui){
-				this.proui = this.proui.GetSingleGlobalInstance().GetSdkInstance();
+				this.proui = this.proui.getSingleGlobalInstance();
 			}
 			
 			//properties
@@ -25,10 +26,9 @@
 			}
 	
 			//********************
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_gridview = this;
-			this.inst = this.GetObjectInstance();
-			this.wi = this.GetWorldInfo();
-			this.acts = this.GetObjectInstance().GetPlugin().constructor.Acts;
+			this.inst = null;
+			this.wi = null;
+			this.acts = null;
 			this.goManager = globalThis.aekiro_goManager;
 			//********************
 			this.template = {};
@@ -38,20 +38,67 @@
 			this.items = [];
 			this.it_column = 0; //column iterator
 			this.it_row = 0; //row iterator
+			this.isInit = false;
+			this._isCloneListenerAttached = false;
 			
 			
-			this.goManager.eventManager.on("childrenRegistred",() =>{
-				var children = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject.children;
-				for (var i = 0, l= children.length; i < l; i++) {
-					this.items.push(children[i]);
-				}
-			},{"once":true}); 	
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() =>{
+				this.onChildrenRegistered();
+			}); 	
 			
 		}
 	
 		
-		PostCreate(){
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
+		_postCreate(){
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_gridview = this;
+			this.inst = this.instance;
+			this.wi = this.instance;
+			this.acts = this.instance.plugin.constructor.Acts;
+		}
+
+		ensureGameObject(){
+			let inst = this.inst;
+			if(!inst){
+				try{
+					inst = this.instance;
+				}catch(_err){
+					return null;
+				}
+			}
+			if(!inst){
+				return null;
+			}
+			const currentGameObject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+			if(currentGameObject && currentGameObject !== this.aekiro_gameobject){
+				this.aekiro_gameobject = currentGameObject;
+				if(!this._isCloneListenerAttached && this.aekiro_gameobject.eventManager){
+					this.aekiro_gameobject.eventManager.on("cloned",() => this.onChildrenRegistered(),{"once":true});
+					this._isCloneListenerAttached = true;
+				}
+			}
+			return this.aekiro_gameobject;
+		}
+
+		onChildrenRegistered(){
+			if(!this.ensureGameObject()){
+				this.isInit = false;
+				return false;
+			}
+
+			this.items.length = 0;
+			if(!this.isTemplateSet){
+				this.isInit = true;
+				return true;
+			}
+
+			var children = this.aekiro_gameobject.children;
+			for (var i = 0, l= children.length; i < l; i++) {
+				if(children[i] && !children[i].IsDestroyed()){
+					this.items.push(children[i]);
+				}
+			}
+			this.isInit = true;
+			return true;
 		}
 		
 		setItemTemplate (){
@@ -64,10 +111,14 @@
 				throw new Error("ProUI-GRIDVIEW: Grid item not found, please check the grid item's name");
 				return;
 			}
-			this.proui.isTypeValid(this.GetObjectInstance(),[C3.Plugins.Sprite,C3.Plugins.NinePatch,C3.Plugins.TiledBg],"ProUI-GRIDVIEW: Grid item can only be Sprite, 9-patch or tiled backgrounds objects.");
-			var go = item.GetUnsavedDataMap().aekiro_gameobject;
-			this.template = go.getTemplate();//console.log(this.template);
+			this.proui.isTypeValid(this.instance,[C3.Plugins.Sprite,C3.Plugins.NinePatch,C3.Plugins.TiledBg],"ProUI-GRIDVIEW: Grid item can only be Sprite, 9-patch or tiled backgrounds objects.");
+			var go = globalThis.Aekiro.getInstanceData(item).aekiro_gameobject;
+			this.template = go.getTemplate();
+			console.log(this.template);
 			go.destroyHierarchy();
+			this.items.length = 0;
+			this.it_column = 0;
+			this.it_row = 0;
 			
 			this.isTemplateSet = true;
 		}
@@ -85,7 +136,7 @@
 				console.error("ProUI-GRIDVIEW: max rows and max columns can't be both -1 or 0");
 				return;
 			}
-	
+			
 			this.setItemTemplate();
 			const dataLength = this.getDataLength();
 			var diff = dataLength - this.items.length;
@@ -104,7 +155,7 @@
 			}else if(diff<0){
 				l = this.items.length;
 				for (var i = dataLength; i < l ; i++) {
-					this.items[i].GetUnsavedDataMap().aekiro_gameobject.destroyHierarchy();
+					globalThis.Aekiro.getInstanceData(this.items[i]).aekiro_gameobject.destroyHierarchy();
 					if(!this.previousRowColumn()){
 						break;
 					}
@@ -125,15 +176,10 @@
 					i++;
 				}			
 			}
-
-			
-
-	
 			var self = this;
 			setTimeout(function(){
-				self.Trigger(C3.Behaviors.aekiro_gridView.Cnds.OnRender);
+				self._trigger(C3.Behaviors.aekiro_gridView.Cnds.OnRender);
 			},0);
-			
 		}
 	
 		add (itemIndex){
@@ -141,8 +187,7 @@
 	
 			var self = this;
 			var item = this.goManager.clone(this.template,null,this.inst,this.wi.GetLayer(),0,0);
-			
-			var wi  = item.GetWorldInfo();
+			var wi  = item;
 			var offsetX = wi.GetX() - wi.GetBoundingBox().getLeft();
 			var offsetY = wi.GetY() - wi.GetBoundingBox().getTop();
 			wi.SetX(this.wi.GetBoundingBox().getLeft() + offsetX + (this.vspace + wi.GetWidth())*this.it_column + this.HPadding);
@@ -161,10 +206,12 @@
 			//in case the template is not set yet
 			this.setItemTemplate();
 
-			//console.log("%cGRIDVIEW %d : Clear","color:blue", this.inst.uid);
 			var items = this.items;
 			for (var i = 0,l=this.items.length; i < l; i++) {
-				items[i].GetUnsavedDataMap().aekiro_gameobject.destroyHierarchy();
+				var go = items[i] ? globalThis.Aekiro.getInstanceData(items[i]).aekiro_gameobject : null;
+				if(go){
+					go.destroyHierarchy();
+				}
 			}
 			items.length = 0;
 			this.it_column = 0; //column iterator
@@ -217,8 +264,8 @@
 			}
 	
 	
-			var itemWidth = this.items[0].GetWorldInfo().GetWidth();
-			var itemHeight = this.items[0].GetWorldInfo().GetHeight();
+			var itemWidth = this.items[0].GetWidth();
+			var itemHeight = this.items[0].GetHeight();
 			//Resizing and repositioning
 			wi.SetWidth(itemWidth*column+this.vspace*(column-1)+2*this.HPadding,true);
 			wi.SetHeight(itemHeight*row+this.hspace*(row-1)+2*this.VPadding,true);
@@ -237,7 +284,8 @@
 		mapData (inst,data,index,key){
 			if(!inst)return;
 
-			var binder = inst.GetUnsavedDataMap().aekiro_gridviewbind;
+			var binder = globalThis.Aekiro.getInstanceData(inst).aekiro_gridviewbind;
+			
 			if(binder){  //&& this.isObject(data)
 				binder.index = index;
 				binder.key = key;
@@ -246,15 +294,10 @@
 				binder.triggerOnGridViewRender();
 			}
 			
-			var children = inst.GetUnsavedDataMap().aekiro_gameobject.children;
+			var children = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.children;
 			for (var i = 0,l=children.length; i < l; i++) {
 				this.mapData(children[i],data,index,key);
 			}	
-		}
-	
-		item_setKey (i,key,value){
-			//self["_"]["set"](this.value[i],key,value);
-			//console.log(this.value);
 		}
 	
 		nextRowColumn (){
@@ -317,11 +360,15 @@
 			return (!!a) && (a.constructor === Array);
 		}
 		
-		Release(){
-			super.Release();
+		_release(){
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson(){
+		_saveToJson(){
 			return {
 				"itemName": this.itemName,
 				"columns": this.columns,
@@ -339,7 +386,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.itemName = o["itemName"];
 			this.columns = o["columns"];
 			this.rows = o["rows"];

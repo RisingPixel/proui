@@ -1,21 +1,17 @@
 "use strict";
 {
-    const SDK = self.SDK;
+    const SDK = globalThis.SDK;
 	
     const PLUGIN_CLASS = SDK.Plugins.aekiro_remoteSprite;
 
     PLUGIN_CLASS.Instance = class RemoteSpriteIInstance extends SDK.IWorldInstanceBase
     {
-        constructor(sdkType, inst)
-        {
-            super(sdkType, inst);
-        }
+        constructor()
+		{
+			super();
+		}
 
-        Release()
-        {}
 
-        OnCreate()
-        {}
 
         OnPlacedInLayout()
         {
@@ -84,12 +80,6 @@
             this.GetObjectType().EditImage();
         }
 
-        OnPropertyChanged(id, value)
-        {}
 
-        LoadC2Property(name, valueString)
-        {
-            return false; // not handled
-        }
     };
 }

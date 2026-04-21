@@ -1,12 +1,13 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	C3.Behaviors.aekiro_radiobutton.Instance = class aekiro_radiobuttonInstance extends globalThis.Aekiro.checkbox
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			super(behInst,properties);
+			super();
+			const properties = this._getInitProperties();
 			
 			//properties
 			this.isEnabled = properties[0];
@@ -36,9 +37,13 @@
 			this.focusAnimationFactor = properties[19];
 			
 			this.ignoreInput = properties[17];
-			
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_radiobutton = this;
+		}
+
+		_postCreate()
+		{
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_radiobutton = this;
 			this.checkbox_constructor();
+			super._postCreate();
 		}
 	
 	
@@ -54,18 +59,25 @@
 				return;
 			}
 	
-			if(!this.radioGroup.GetUnsavedDataMap().aekiro_radiogroup){
+			if(!globalThis.Aekiro.getInstanceData(this.radioGroup).aekiro_radiogroup){
 				console.error("ProUI-Radiobutton uid=%s: Radiogroup needs to have a Radiogroup behavior.",this.inst.GetUID());
 				return;
 			}
 			
-			this.radioGroup = this.radioGroup.GetUnsavedDataMap().aekiro_radiogroup;
+			this.radioGroup = globalThis.Aekiro.getInstanceData(this.radioGroup).aekiro_radiogroup;
 		}
 		
 		GetRadioGroup(){
+			const currentGameObject = globalThis.Aekiro.getInstanceData(this.instance).aekiro_gameobject;
+			if(currentGameObject && currentGameObject !== this.aekiro_gameobject){
+				this.aekiro_gameobject = currentGameObject;
+			}
+			if(!this.aekiro_gameobject){
+				return null;
+			}
 			var p  = this.aekiro_gameobject.parent_get();
 			if(p){
-				return p.GetUnsavedDataMap().aekiro_radiogroup;
+				return globalThis.Aekiro.getInstanceData(p).aekiro_radiogroup;
 			}
 			return null;
 		}
@@ -84,31 +96,31 @@
 			if(radioGroup){
 				radioGroup.setValue(this.name);
 			}
-			this.Trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnClicked);
+			this._trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnClicked);
 		}
 		
 		OnMouseEnterC(){
-			this.Trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnMouseEnter);
+			this._trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnMouseEnter);
 		}
 		
 		OnMouseLeaveC(){
-			this.Trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnMouseLeave);
+			this._trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnMouseLeave);
 		}
 		
 		OnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnFocused);
+			this._trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnFocused);
 		}
 
 		OnUnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnUnFocused);
+			this._trigger(C3.Behaviors.aekiro_radiobutton.Cnds.OnUnFocused);
 		}
 
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"isEnabled":this.isEnabled,
@@ -139,7 +151,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.isEnabled = o["isEnabled"];
 			this.name = o["name"];
 

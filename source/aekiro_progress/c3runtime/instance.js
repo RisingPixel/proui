@@ -2,13 +2,14 @@
 
 {
 	const Tween = globalThis["TWEEN"];
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 
-	C3.Behaviors.aekiro_progress.Instance = class aekiro_progressInstance extends C3.SDKBehaviorInstanceBase
+	C3.Behaviors.aekiro_progress.Instance = class aekiro_progressInstance extends globalThis.ISDKBehaviorInstanceBase
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 			
 			if (properties){
 				this.maxValue = properties[0];
@@ -16,34 +17,27 @@
 				this.animation = properties[2];
 			}
 	
-			this.inst = this.GetObjectInstance();
-			this.wi = this.GetWorldInfo();
+			this.inst = null;
+			this.wi = null;
+			this.initWidth = null;
 			this.goManager = globalThis.aekiro_goManager;
 			
-			const cb  = () => {
-				if(!this._objectClass){
-					//this.goManager.eventManager.removeListener(cb);
-					return; //this is a bad hack
-				}
-				this.init();
-			}
-			this.goManager.eventManager.on("childrenRegistred",cb,{"once":true});
-			//******************************************
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() => this.init());			//******************************************
 		}
 	
-		PostCreate(){
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
-			if(this.aekiro_gameobject){
-				this.aekiro_gameobject.eventManager.on("cloned",() => this.init(),{"once":true});
-			}
-			this.init();
+		_postCreate(){
+			this.inst = globalThis.Aekiro.compatWorldInstance(this.instance);
+			this.wi = this.inst;
 		}
 	
 		init(){
 			var wi = this.wi;
-			this.initWidth = wi.GetWidth();
+			if(this.initWidth == null){
+				this.initWidth = wi.GetWidth();
+			}
 			
 			this.transf = {width:wi.GetWidth()};
+			this.targetWidth = wi.GetWidth();
 			this.tween = new Tween["Tween"](this.transf);
 			if(this.animation == 1){
 				this.tween["easing"](Tween["Easing"]["Linear"]["None"]);
@@ -90,14 +84,18 @@
 			
 
 			targetProp = progress*this.initWidth;
+			this.targetWidth = targetProp;
 	
 			if(this.animation){
 				var wi = this.wi;
+				if(this.tween["isPlaying"]){
+					this.tween["stop"]();
+				}
 				this.transf.width = wi.GetWidth();
-				this.tween["to"]({ width:targetProp}, 500)["start"]();
+				this.tween["to"]({ width:targetProp}, 500);
 				
-				this._StartTicking();
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+				this._setTicking(true);
+				this.tween["start"](this.runtime.GetWallTime()*1000);
 			}else{
 				this.wi.SetWidth(targetProp,true);
 				this.wi.SetBboxChanged();
@@ -108,30 +106,34 @@
 			}
 		}
 	
-		Tick ()	{
-			if(this.isTweenPlaying){
-				this.isTweenPlaying = false;
-			}
-	
-			if(this.tween["isPlaying"]){
-				this.tween["update"](this.GetRuntime().GetWallTime()*1000);
-				this.isTweenPlaying = true;
-			}
-	
-			if(this.isTweenPlaying){
+		_tick(){
+			const wasPlaying = !!this.tween["isPlaying"];
+			if(wasPlaying){
+				this.tween["update"](this.runtime.GetWallTime()*1000);
 				this.wi.SetWidth(this.transf.width,true);	
 				this.wi.SetBboxChanged();
-			}else{
-				this._StopTicking();	
+			}
+
+			if(!this.tween["isPlaying"]){
+				if(wasPlaying){
+					this.transf.width = this.targetWidth;
+					this.wi.SetWidth(this.targetWidth,true);
+					this.wi.SetBboxChanged();
+				}
+				this._setTicking(false);	
 			}
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson(){
+		_saveToJson(){
 			return {
 				"maxValue":this.maxValue,
 				"value":this.value,
@@ -140,7 +142,7 @@
 			}
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.maxValue = o["maxValue"];
 			this.value = o["value"];
 			this.animation = o["animation"];

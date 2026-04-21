@@ -1,15 +1,14 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	
 	C3.Behaviors.aekiro_button.Instance = class aekiro_buttonInstance extends globalThis.Aekiro.button
 	{
-		constructor(behInst, properties)
+		constructor()
 		{
-			
-			
-			super(behInst,properties);
+			super();
+			const properties = this._getInitProperties();
 						
 			this.isEnabled = properties[0];
 			this.frame_normal = properties[1];
@@ -37,38 +36,42 @@
 			this.focusAnimationFactor = properties[19];
 
 			this.ignoreInput = properties[20];
-			
-			this.button_constructor();
 			//***************************************			
+		}
+
+		_postCreate()
+		{
+			this.button_constructor();
+			super._postCreate();
 		}
 		
 		OnAnyInputUpC(){
-			this.Trigger(C3.Behaviors.aekiro_button.Cnds.OnClicked);
-			this.proui.Trigger(C3.Plugins.aekiro_proui.Cnds.OnAnyButtonClicked);
+			this._trigger(C3.Behaviors.aekiro_button.Cnds.OnClicked);
+			this.proui._trigger(C3.Plugins.aekiro_proui.Cnds.OnAnyButtonClicked);
 		}
 		
 		OnMouseEnterC(){
-			this.Trigger(C3.Behaviors.aekiro_button.Cnds.OnMouseEnter);
+			this._trigger(C3.Behaviors.aekiro_button.Cnds.OnMouseEnter);
 		}
 		
 		OnMouseLeaveC(){
-			this.Trigger(C3.Behaviors.aekiro_button.Cnds.OnMouseLeave);
+			this._trigger(C3.Behaviors.aekiro_button.Cnds.OnMouseLeave);
 		}
 		
 		OnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_button.Cnds.OnFocused);
+			this._trigger(C3.Behaviors.aekiro_button.Cnds.OnFocused);
 		}
 
 		OnUnFocusedC(){
-			this.Trigger(C3.Behaviors.aekiro_button.Cnds.OnUnFocused);
+			this._trigger(C3.Behaviors.aekiro_button.Cnds.OnUnFocused);
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"isEnabled":this.isEnabled,
@@ -98,7 +101,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.isEnabled = o["isEnabled"];
 			this.frame_normal = o["frame_normal"];
 			this.frame_hover = o["frame_hover"];

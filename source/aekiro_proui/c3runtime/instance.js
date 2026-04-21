@@ -2,24 +2,50 @@
 
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
+	const PROUI_DOM_COMPONENT_ID = "aekiro_proui_dom";
 
-	C3.Plugins.aekiro_proui.Instance = class aekiro_prouiSingleGlobalInstance extends C3.SDKInstanceBase
+	C3.Plugins.aekiro_proui.Instance = class aekiro_prouiSingleGlobalInstance extends globalThis.ISDKInstanceBase
 	{
-		constructor(inst, properties){
-			super(inst,properties);
+		constructor()
+		{
+			super({ domComponentId: PROUI_DOM_COMPONENT_ID });
+			const properties = this._getInitProperties();
 	
 			this.ignoreInput = false;
 			this.stopClickPropagation = properties[0];
+			globalThis.Aekiro = globalThis.Aekiro || {};
+			globalThis.Aekiro.prouiSdkInstance = this;
 
 			this.goManager = globalThis.aekiro_goManager;
 			
-			this.goManager.init(this.GetRuntime());
+			this.goManager.init(this.runtime);
 			this.lastLayout = null;
+			this._initialiseToken = 0;
+			this._initialiseTimer = null;
+			if (this._addDOMMessageHandler) {
+				this._addDOMMessageHandler("audio-error", data => {
+					const message = data && data.message ? data.message : "Unknown audio error";
+					console.error("ProUI: Failed to play audio. " + message);
+				});
+			}
 			
-			this.GetRuntime().Dispatcher().addEventListener("beforelayoutchange", () =>{
+			this.runtime.addEventListener("beforelayoutchange", () =>{
 				//console.log("beforelayoutchange");
+				if (this._initialiseTimer !== null) {
+					clearTimeout(this._initialiseTimer);
+					this._initialiseTimer = null;
+				}
+				this._initialiseToken++;
 				this.goManager.isInit = false;
+				if(globalThis.aekiro_scrollViewManager){
+					for (const key in globalThis.aekiro_scrollViewManager.scrollViews) {
+						delete globalThis.aekiro_scrollViewManager.scrollViews[key];
+					}
+				}
+				if(globalThis.aekiro_dialogManager){
+					globalThis.aekiro_dialogManager.currentDialogs.length = 0;
+				}
 			});
 
 			//console.log('%c%s','color: black; background: yellow','Change starting from this Version: Add the "initialise" action of ProUI plugin on "start of layout" of every layout using ProUI.');
@@ -27,32 +53,43 @@
 	
 		Initialise()
 		{
-			/*if(this.lastLayout == this.GetRuntime().GetMainRunningLayout().GetName())return;
-			this.lastLayout = this.GetRuntime().GetMainRunningLayout().GetName();*/
+			/*if(this.lastLayout == this.runtime.GetMainRunningLayout().GetName())return;
+			this.lastLayout = this.runtime.GetMainRunningLayout().GetName();*/
 			//console.log("ProUI: Initialise");
-			this.goManager.gos = {};
-			this.goManager.registerGameObjects();
-			this.goManager.cleanSceneGraph();
-			this.goManager.createSceneGraph();
+			const token = ++this._initialiseToken;
+			const runPass = () => {
+				this.goManager.gos = {};
+				this.goManager.registerGameObjects();
+				this.goManager.cleanSceneGraph();
+				this.goManager.createSceneGraph();
+			};
+
+			this.goManager.isInit = false;
+			runPass();
 			this.goManager.isInit = true;
+
+			if (this._initialiseTimer !== null) {
+				clearTimeout(this._initialiseTimer);
+			}
+			this._initialiseTimer = setTimeout(() => {
+				if (this._initialiseToken !== token) {
+					return;
+				}
+				this.goManager.isInit = false;
+				runPass();
+				this.goManager.isInit = true;
+				this._initialiseTimer = null;
+			}, 0);
 		}
 	
 		setUIAudioVolume(volume){
-			var list = [C3.Behaviors.aekiro_button, C3.Behaviors.aekiro_checkbox, C3.Behaviors.aekiro_radiobutton, C3.Behaviors.aekiro_dialog];
+			var list = ["aekiro_gameobject"];
 	
-			var behaviorBase,insts,audioSources;
+			var insts,audioSources;
 			for (var i = 0, l = list.length; i < l; i++) {
-				const addonManager = this.GetRuntime()._addonManager ? this.GetRuntime()._addonManager : this.GetRuntime()._pluginManager;
-				if (C3?.AddonManager?.GetBehaviorByConstructorFunction)
-				{
-					behaviorBase = C3.AddonManager.GetBehaviorByConstructorFunction(C3.Behaviors.aekiro_gameobject);
-				} else {
-					behaviorBase = addonManager._behaviorsByCtor.get(C3.Behaviors.aekiro_gameobject);
-				}
-						if(!behaviorBase)continue;
-				insts = behaviorBase.GetInstances();
+				insts = globalThis.Aekiro.getBehaviorInstances(list[i]);
 				for (var j = 0, m = insts.length; j < m; j++) {
-					audioSources = insts[j].GetUnsavedDataMap().audioSources;
+					audioSources = globalThis.Aekiro.getInstanceData(insts[j]).audioSources;
 					if(!audioSources)continue;
 	
 					for(var key in audioSources){
@@ -63,28 +100,34 @@
 		}
 	
 		isTypeValid(inst,types){
-			var ctr = inst.GetPlugin().constructor;
 			for (var i = 0, l= types.length; i < l; i++) {
-				if(ctr == types[i]){
+				if(globalThis.Aekiro.isInstanceOfPlugin(inst, types[i])){
 					return true;
 				}
 			}
 			return false;
 		}
 	
-		Release()
+		_release()
 		{
-			super.Release();
+			if (this._initialiseTimer !== null) {
+				clearTimeout(this._initialiseTimer);
+				this._initialiseTimer = null;
+			}
+			if (globalThis.Aekiro && globalThis.Aekiro.prouiSdkInstance === this) {
+				globalThis.Aekiro.prouiSdkInstance = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				// data to be saved for savegames
 			};
 		}
 	
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			// load state for savegames
 		}
@@ -93,19 +136,686 @@
 }
 
 {
-const Tween = self["TWEEN"];
-const C3 = self.C3;
+const Tween = globalThis["TWEEN"];
+const C3 = globalThis.C3;
 
-globalThis.Aekiro = {};
+globalThis.Aekiro = globalThis.Aekiro || {};
+globalThis.Aekiro.instanceDataMap = globalThis.Aekiro.instanceDataMap || new WeakMap();
+globalThis.Aekiro.instanceDataByUid = globalThis.Aekiro.instanceDataByUid || new Map();
+globalThis.Aekiro.behaviorInstances = globalThis.Aekiro.behaviorInstances || new Map();
+globalThis.Aekiro.protoPropertyNameCache = globalThis.Aekiro.protoPropertyNameCache || new WeakMap();
+globalThis.Aekiro.serializableBehaviorPropCache = globalThis.Aekiro.serializableBehaviorPropCache || new WeakMap();
+globalThis.Aekiro.registerBehaviorInstance = globalThis.Aekiro.registerBehaviorInstance || function(key, inst) {
+	if (!key || !inst) {
+		return;
+	}
+	let set = globalThis.Aekiro.behaviorInstances.get(key);
+	if (!set) {
+		set = new Set();
+		globalThis.Aekiro.behaviorInstances.set(key, set);
+	}
+	set.add(inst);
+};
+globalThis.Aekiro.unregisterBehaviorInstance = globalThis.Aekiro.unregisterBehaviorInstance || function(key, inst) {
+	const set = globalThis.Aekiro.behaviorInstances.get(key);
+	if (!set) {
+		return;
+	}
+	set.delete(inst);
+	if (!set.size) {
+		globalThis.Aekiro.behaviorInstances.delete(key);
+	}
+};
+globalThis.Aekiro.getBehaviorInstances = globalThis.Aekiro.getBehaviorInstances || function(key) {
+	const set = globalThis.Aekiro.behaviorInstances.get(key);
+	return set ? Array.from(set) : [];
+};
+globalThis.Aekiro.isInstanceOfPlugin = globalThis.Aekiro.isInstanceOfPlugin || function(inst, ctor) {
+	if (!inst || !ctor) {
+		return false;
+	}
+
+	const targetPlugin = globalThis.IPlugin && globalThis.IPlugin.getByConstructor
+		? globalThis.IPlugin.getByConstructor(ctor)
+		: null;
+	const instPlugin = inst.plugin || (inst.objectType ? inst.objectType.plugin : null);
+
+	if (instPlugin && targetPlugin) {
+		if (instPlugin === targetPlugin) {
+			return true;
+		}
+		if (instPlugin.id && targetPlugin.id && instPlugin.id === targetPlugin.id) {
+			return true;
+		}
+	}
+
+	if (inst.plugin && inst.plugin.constructor === ctor) {
+		return true;
+	}
+
+	return false;
+};
+globalThis.Aekiro.compatRect = globalThis.Aekiro.compatRect || function(rect) {
+	if (!rect || rect.__aekiroCompatRect) {
+		return rect;
+	}
+
+	return {
+		__aekiroCompatRect: true,
+		left: rect.left,
+		right: rect.right,
+		top: rect.top,
+		bottom: rect.bottom,
+		width: rect.width,
+		height: rect.height,
+		getLeft() { return this.left; },
+		getRight() { return this.right; },
+		getTop() { return this.top; },
+		getBottom() { return this.bottom; },
+		getWidth() { return this.width; },
+		getHeight() { return this.height; }
+	};
+};
+globalThis.Aekiro.compatLayer = globalThis.Aekiro.compatLayer || function(layer) {
+	if (!layer || layer.__aekiroCompatLayer) {
+		return layer;
+	}
+
+	layer.__aekiroCompatLayer = true;
+	layer.GetIndex = function() { return this.index; };
+	layer.IsVisible = function() { return this.isVisible; };
+	layer.SetVisible = function(v) { this.isVisible = v; };
+	layer.GetOpacity = function() { return this.opacity; };
+	layer.SetOpacity = function(v) { this.opacity = v; };
+	layer.GetOwnScale = function() { return this.scale; };
+	layer.SetOwnScale = function(v) { this.scale = v; };
+	layer.GetViewport = function() { return globalThis.Aekiro.compatRect(this.getViewport()); };
+	layer.CanvasCssToLayer = function(clientX, clientY, z) { return this.cssPxToLayer(clientX, clientY, z); };
+	layer.GetLayout = function() { return this.layout; };
+	layer.SetForceOwnTexture = function(v) { this.isForceOwnTexture = v; };
+	layer.MoveInstanceAdjacent = function(inst, other, isAfter) {
+		if (inst && typeof inst.moveAdjacentToInstance === "function") {
+			return inst.moveAdjacentToInstance(other, isAfter);
+		}
+	};
+
+	return layer;
+};
+globalThis.Aekiro.compatObjectClass = globalThis.Aekiro.compatObjectClass || function(objectClass) {
+	if (!objectClass || objectClass.__aekiroCompatObjectClass) {
+		return objectClass;
+	}
+
+	objectClass.__aekiroCompatObjectClass = true;
+	objectClass.GetName = function() { return this.name; };
+
+	return objectClass;
+};
+globalThis.Aekiro.compatLayout = globalThis.Aekiro.compatLayout || function(layout) {
+	if (!layout || layout.__aekiroCompatLayout) {
+		return layout;
+	}
+
+	layout.__aekiroCompatLayout = true;
+	layout.GetName = function() { return this.name; };
+	layout.GetLayerCount = function() {
+		return Array.isArray(this.layers) ? this.layers.length : 0;
+	};
+	layout.GetLayerByIndex = function(index) {
+		if (!Array.isArray(this.layers)) {
+			return null;
+		}
+		return globalThis.Aekiro.compatLayer(this.layers[index] || null);
+	};
+
+	return layout;
+};
+globalThis.Aekiro.compatRuntime = globalThis.Aekiro.compatRuntime || function(runtime) {
+	if (!runtime || runtime.__aekiroCompatRuntime) {
+		return runtime;
+	}
+
+	runtime.__aekiroCompatRuntime = true;
+	runtime.GetWallTime = function() {
+		return this.wallTime ?? this.gameTime ?? (performance.now() / 1000);
+	};
+	runtime.GetTimeScale = function() {
+		return this.timeScale ?? 1;
+	};
+	runtime.GetDt = function() {
+		return this.dt ?? this.timeScaleDt ?? (1 / 60);
+	};
+	runtime.GetMainRunningLayout = function() {
+		return globalThis.Aekiro.compatLayout(this.layout || this.mainRunningLayout || null);
+	};
+	runtime.DestroyInstance = function(inst) {
+		if (!inst) {
+			return;
+		}
+		if (typeof this.destroyInstance === "function") {
+			return this.destroyInstance(inst);
+		}
+		if (typeof inst.destroy === "function") {
+			return inst.destroy();
+		}
+	};
+	runtime.UpdateRender = function() {};
+
+	return runtime;
+};
+globalThis.Aekiro.compatBlendMode = globalThis.Aekiro.compatBlendMode || function(mode) {
+	if (typeof mode === "string") {
+		return mode;
+	}
+
+	const legacyBlendModes = [
+		"normal",
+		"additive",
+		"xor",
+		"copy",
+		"destination-over",
+		"source-in",
+		"destination-in",
+		"source-out",
+		"destination-out",
+		"source-atop",
+		"destination-atop",
+		"lighten",
+		"darken",
+		"multiply",
+		"screen"
+	];
+
+	if (typeof mode === "number" && mode >= 0 && mode < legacyBlendModes.length) {
+		return legacyBlendModes[mode];
+	}
+
+	return "normal";
+};
+globalThis.Aekiro.compatWorldInstance = globalThis.Aekiro.compatWorldInstance || function(inst) {
+	if (!inst || inst.__aekiroCompatWorldInstance) {
+		return inst;
+	}
+
+	inst.__aekiroCompatWorldInstance = true;
+	inst.GetInstance = function() { return this; };
+	inst.GetWorldInfo = function() { return this; };
+	inst.GetUnsavedDataMap = function() { return globalThis.Aekiro.getInstanceData(this); };
+	inst.GetUID = function() { return this.uid; };
+	inst.GetObjectClass = function() { return globalThis.Aekiro.compatObjectClass(this.objectType); };
+	inst.GetLayer = function() { return globalThis.Aekiro.compatLayer(this.layer); };
+	inst.GetX = function() { return this.x; };
+	inst.SetX = function(x) { this.x = x; };
+	inst.GetY = function() { return this.y; };
+	inst.SetY = function(y) { this.y = y; };
+	inst.SetXY = function(x, y) {
+		if (this.setPosition) {
+			this.setPosition(x, y);
+		} else {
+			this.x = x;
+			this.y = y;
+		}
+	};
+	inst.OffsetX = function(dx) { this.SetX(this.GetX() + dx); };
+	inst.OffsetY = function(dy) { this.SetY(this.GetY() + dy); };
+	inst.OffsetXY = function(dx, dy) { this.SetXY(this.GetX() + dx, this.GetY() + dy); };
+	inst.GetWidth = function() { return this.width; };
+	inst.SetWidth = function(w) { this.width = w; };
+	inst.GetHeight = function() { return this.height; };
+	inst.SetHeight = function(h) { this.height = h; };
+	inst.SetSize = function(w, h) {
+		if (this.setSize) {
+			this.setSize(w, h);
+		} else {
+			this.width = w;
+			this.height = h;
+		}
+	};
+	inst.GetAngle = function() { return this.angle; };
+	inst.SetAngle = function(a) { this.angle = a; };
+	inst.OffsetAngle = function(da) { this.SetAngle(this.GetAngle() + da); };
+	inst.GetCosAngle = function() { return Math.cos(this.angle); };
+	inst.GetSinAngle = function() { return Math.sin(this.angle); };
+	inst.GetOpacity = function() { return this.opacity; };
+	inst.SetOpacity = function(o) { this.opacity = o; };
+	inst.GetBlendMode = function() {
+		return this.blendMode;
+	};
+	inst.SetBlendMode = function(mode) {
+		this.blendMode = globalThis.Aekiro.compatBlendMode(mode);
+	};
+	inst.GetBoundingBox = function() { return globalThis.Aekiro.compatRect(this.getBoundingBox()); };
+	inst.GetBoundingQuad = function() { return this.getBoundingQuad(); };
+	inst.GetQuad = function() { return this.getBoundingQuad(); };
+	inst.ContainsPoint = function(x, y) { return this.containsPoint(x, y); };
+	inst.IsVisible = function() { return this.isVisible; };
+	inst.SetVisible = function(v) { this.isVisible = v; };
+	inst.IsDestroyed = function() { return !!this.isDestroyed; };
+	inst.MoveToTop = function() { return this.moveToTop(); };
+	inst.MoveToBottom = function() { return this.moveToBottom(); };
+	inst.MoveToLayer = function(layer) { return this.moveToLayer(layer); };
+	inst.GetZIndex = function() { return this.zIndex; };
+	inst.GetTotalZ = function() { return this.totalZ ?? this.totalZ ?? this.z ?? 0; };
+	inst.GetTotalZElevation = function() { return this.totalZ ?? this.totalZ ?? this.z ?? 0; };
+	inst.SetBboxChanged = function() {};
+
+	globalThis.Aekiro.compatLayer(inst.layer);
+
+	return inst;
+};
+globalThis.Aekiro.getInstanceData = globalThis.Aekiro.getInstanceData || function(inst) {
+	globalThis.Aekiro.compatWorldInstance(inst);
+	const uid = inst && (typeof inst.uid === "number" || typeof inst.uid === "string")
+		? inst.uid
+		: null;
+	let data = uid !== null
+		? globalThis.Aekiro.instanceDataByUid.get(uid)
+		: globalThis.Aekiro.instanceDataMap.get(inst);
+	if (!data) {
+		data = {};
+		if (uid !== null) {
+			globalThis.Aekiro.instanceDataByUid.set(uid, data);
+		} else {
+			globalThis.Aekiro.instanceDataMap.set(inst, data);
+		}
+	}
+	return data;
+};
+globalThis.Aekiro.cloneSerializableValue = globalThis.Aekiro.cloneSerializableValue || function(value) {
+	if (value == null) {
+		return value;
+	}
+	const type = typeof value;
+	if (type === "string" || type === "number" || type === "boolean") {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return value
+			.map(globalThis.Aekiro.cloneSerializableValue)
+			.filter(v => v !== undefined);
+	}
+	if (type !== "object") {
+		return undefined;
+	}
+	const proto = Object.getPrototypeOf(value);
+	if (proto !== Object.prototype && proto !== null) {
+		return undefined;
+	}
+	const out = {};
+	for (const key of Object.keys(value)) {
+		const cloned = globalThis.Aekiro.cloneSerializableValue(value[key]);
+		if (cloned !== undefined) {
+			out[key] = cloned;
+		}
+	}
+	return out;
+};
+globalThis.Aekiro.serializeInstanceVars = globalThis.Aekiro.serializeInstanceVars || function(inst) {
+	if (!inst || !inst.instVars) {
+		return null;
+	}
+	const result = {};
+	const names = Object.getOwnPropertyNames(inst.instVars);
+	for (const name of names) {
+		const cloned = globalThis.Aekiro.cloneSerializableValue(inst.instVars[name]);
+		if (cloned !== undefined) {
+			result[name] = cloned;
+		}
+	}
+	return Object.keys(result).length ? result : null;
+};
+globalThis.Aekiro.applyInstanceVars = globalThis.Aekiro.applyInstanceVars || function(inst, state) {
+	if (!inst || !inst.instVars || !state) {
+		return;
+	}
+	for (const name of Object.keys(state)) {
+		try {
+			inst.instVars[name] = state[name];
+		} catch (_err) {
+		}
+	}
+};
+globalThis.Aekiro.serializeWorldState = globalThis.Aekiro.serializeWorldState || function(inst) {
+	const state = {
+		width: inst.GetWidth(),
+		height: inst.GetHeight(),
+		angle: inst.GetAngle ? inst.GetAngle(true) : inst.GetAngle(),
+		opacity: inst.GetOpacity ? inst.GetOpacity() : inst.opacity,
+		visible: inst.IsVisible ? inst.IsVisible() : inst.isVisible
+	};
+	if ("originX" in inst && typeof inst.originX === "number") {
+		state.originX = inst.originX;
+	}
+	if ("originY" in inst && typeof inst.originY === "number") {
+		state.originY = inst.originY;
+	}
+	const animationName = typeof inst.animationName === "string"
+		? inst.animationName
+		: (inst.animation && typeof inst.animation.name === "string" ? inst.animation.name : null);
+	if (animationName) {
+		state.animationName = animationName;
+	}
+	if ("animationFrame" in inst && typeof inst.animationFrame === "number") {
+		state.animationFrame = inst.animationFrame;
+	}
+	if ("colorRgb" in inst) {
+		state.colorRgb = inst.colorRgb;
+	}
+	return state;
+};
+globalThis.Aekiro.applyWorldState = globalThis.Aekiro.applyWorldState || function(inst, state) {
+	if (!state) {
+		return;
+	}
+	if (typeof state.originX === "number" && typeof state.originY === "number" && typeof inst.setOrigin === "function") {
+		inst.setOrigin(state.originX, state.originY);
+	}
+	if (typeof state.animationName === "string" && state.animationName.length && typeof inst.setAnimation === "function") {
+		inst.setAnimation(state.animationName, "current-frame");
+	}
+	if (typeof state.animationFrame === "number" && "animationFrame" in inst) {
+		inst.animationFrame = state.animationFrame;
+	}
+	if (typeof state.width === "number") {
+		inst.SetWidth(state.width, true);
+	}
+	if (typeof state.height === "number") {
+		inst.SetHeight(state.height, true);
+	}
+	if (typeof state.opacity === "number") {
+		inst.SetOpacity(state.opacity);
+	}
+	if (typeof state.visible === "boolean") {
+		inst.SetVisible(state.visible);
+	}
+	if ("colorRgb" in state && "colorRgb" in inst) {
+		inst.colorRgb = state.colorRgb;
+	}
+	inst.SetBboxChanged();
+};
+globalThis.Aekiro.objectPropertySkipProps = globalThis.Aekiro.objectPropertySkipProps || new Set([
+	"constructor",
+	"uid",
+	"iid",
+	"runtime",
+	"plugin",
+	"objectType",
+	"behaviors",
+	"effects",
+	"layer",
+	"layout",
+	"x",
+	"y",
+	"z",
+	"zIndex",
+	"zElevation",
+	"totalZ",
+	"totalZElevation",
+	"width",
+	"height",
+	"angle",
+	"angleDegrees",
+	"opacity",
+	"isVisible",
+	"visible",
+	"originX",
+	"originY",
+	"colorRgb",
+	"animation",
+	"animationName",
+	"animationFrame",
+	"timeScale",
+	"dt",
+	"activeSampling",
+	"sampling",
+	"blendMode",
+	"worldInfo",
+	"instance",
+	"sdkInstance",
+	"unsavedDataMap",
+	"collisionCells",
+	"renderCells",
+	"boundingBox",
+	"boundingQuad",
+	"quad",
+	"imageInfo",
+	"imageAsset",
+	"children",
+	"parent"
+]);
+globalThis.Aekiro.serializeObjectProperties = globalThis.Aekiro.serializeObjectProperties || function(inst) {
+	if (!inst) {
+		return null;
+	}
+
+	const SKIP = globalThis.Aekiro.objectPropertySkipProps || new Set();
+	const props = {};
+	const seen = new Set();
+	let proto = inst;
+
+	while (proto && proto !== Object.prototype) {
+		for (const name of Object.getOwnPropertyNames(proto)) {
+			if (seen.has(name) || SKIP.has(name)) {
+				continue;
+			}
+			seen.add(name);
+
+			let value;
+			try {
+				value = inst[name];
+			} catch (_err) {
+				continue;
+			}
+
+			if (typeof value === "function") {
+				continue;
+			}
+
+			const cloned = globalThis.Aekiro.cloneSerializableValue(value);
+			if (cloned !== undefined) {
+				props[name] = cloned;
+			}
+		}
+		proto = Object.getPrototypeOf(proto);
+	}
+
+	return Object.keys(props).length ? props : null;
+};
+globalThis.Aekiro.applyObjectProperties = globalThis.Aekiro.applyObjectProperties || function(inst, state) {
+	if (!inst || !state) {
+		return;
+	}
+
+	const SKIP = globalThis.Aekiro.objectPropertySkipProps || new Set();
+	for (const name of Object.keys(state)) {
+		if (SKIP.has(name)) {
+			continue;
+		}
+		try {
+			inst[name] = state[name];
+		} catch (_err) {
+		}
+	}
+};
+globalThis.Aekiro.scriptBehaviorSkipProps = globalThis.Aekiro.scriptBehaviorSkipProps || new Set([
+	"constructor",
+	"behavior",
+	"instance",
+	"runtime",
+	"objectType",
+	"plugin",
+	"sdkInstance",
+	"addon",
+	"inst",
+	"wi",
+	"acts",
+	"eventManager",
+	"goManager",
+	"children",
+	"parent",
+	"local",
+	"prev",
+	"userName",
+	"areChildrenRegistred",
+	"isWorldInfoOverrided",
+	"proui",
+	"aekiro_dialogManager",
+	"scrollViews",
+	"audioSources",
+	"aekiro_gameobject"
+]);
+globalThis.Aekiro.serializeScriptBehaviorStates = globalThis.Aekiro.serializeScriptBehaviorStates || function(inst) {
+	const getAllPropertyNames = value => {
+		const names = new Set();
+		let proto = value;
+		while (proto && proto !== Object.prototype) {
+			for (const name of Object.getOwnPropertyNames(proto)) {
+				names.add(name);
+			}
+			proto = Object.getPrototypeOf(proto);
+		}
+		return names;
+	};
+	const SKIP_PROPS = globalThis.Aekiro.scriptBehaviorSkipProps;
+
+	const result = {};
+	const behaviors = inst && inst.behaviors ? inst.behaviors : null;
+	if (!behaviors) {
+		return result;
+	}
+
+	for (const key of getAllPropertyNames(behaviors)) {
+		if (key === "aekiro_gameobject") {
+			continue;
+		}
+		if (SKIP_PROPS.has(key)) {
+			continue;
+		}
+		let behaviorInst;
+		try {
+			behaviorInst = behaviors[key];
+		} catch (_err) {
+			continue;
+		}
+		if (!behaviorInst) {
+			continue;
+		}
+		const data = {};
+		const seen = new Set();
+
+		for (const prop of Object.keys(behaviorInst)) {
+			seen.add(prop);
+		}
+
+		let proto = behaviorInst;
+		while (proto && proto !== Object.prototype) {
+			for (const prop of Object.getOwnPropertyNames(proto)) {
+				if (!seen.has(prop)) {
+					seen.add(prop);
+				}
+			}
+			proto = Object.getPrototypeOf(proto);
+		}
+
+		for (const prop of seen) {
+			if (SKIP_PROPS.has(prop)) {
+				continue;
+			}
+			if (prop.endsWith("Manager")) {
+				continue;
+			}
+			let value;
+			try {
+				value = behaviorInst[prop];
+			} catch (_err) {
+				continue;
+			}
+			if (typeof value === "function") {
+				continue;
+			}
+			const cloned = globalThis.Aekiro.cloneSerializableValue(value);
+			if (cloned !== undefined) {
+				data[prop] = cloned;
+			}
+		}
+		if (Object.keys(data).length) {
+			result[key] = data;
+		}
+	}
+
+	return result;
+};
+globalThis.Aekiro.applyScriptBehaviorStates = globalThis.Aekiro.applyScriptBehaviorStates || function(inst, states) {
+	if (!states || !inst || !inst.behaviors) {
+		return;
+	}
+	const SKIP_PROPS = globalThis.Aekiro.scriptBehaviorSkipProps || new Set();
+	for (const key in states) {
+		if (!Object.prototype.hasOwnProperty.call(states, key)) {
+			continue;
+		}
+		if (key === "aekiro_gameobject") {
+			continue;
+		}
+		let behaviorInst = null;
+		try {
+			behaviorInst = inst.behaviors[key];
+		} catch (_err) {
+		}
+		const state = states[key];
+		if (!behaviorInst || !state) {
+			continue;
+		}
+		for (const prop of Object.keys(state)) {
+			if (SKIP_PROPS.has(prop) || prop.endsWith("Manager")) {
+				continue;
+			}
+			try {
+				behaviorInst[prop] = state[prop];
+			} catch (_err) {
+			}
+		}
+		if (typeof behaviorInst.updateInitialState === "function") {
+			behaviorInst.updateInitialState();
+		}
+	}
+};
+globalThis.Aekiro.serializeNodeState = globalThis.Aekiro.serializeNodeState || function(inst) {
+	return {
+		gameobject: globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.SaveToJson(),
+		instanceVars: globalThis.Aekiro.serializeInstanceVars(inst),
+		objectProperties: globalThis.Aekiro.serializeObjectProperties(inst),
+		world: globalThis.Aekiro.serializeWorldState(inst),
+		scriptBehaviors: globalThis.Aekiro.serializeScriptBehaviorStates(inst)
+	};
+};
+globalThis.Aekiro.applyNodeState = globalThis.Aekiro.applyNodeState || function(inst, state) {
+	if (!state) {
+		return;
+	}
+	var aekiro_gameobject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+	if (aekiro_gameobject && state.gameobject) {
+		aekiro_gameobject.LoadFromJson(state.gameobject);
+	}
+	if (state.instanceVars) {
+		globalThis.Aekiro.applyInstanceVars(inst, state.instanceVars);
+	}
+	if (state.objectProperties) {
+		globalThis.Aekiro.applyObjectProperties(inst, state.objectProperties);
+	}
+	if (state.world) {
+		globalThis.Aekiro.applyWorldState(inst, state.world);
+	}
+	if (state.scriptBehaviors) {
+		globalThis.Aekiro.applyScriptBehaviorStates(inst, state.scriptBehaviors);
+	}
+};
 
 globalThis.AudioSource = class AudioSource {
 	constructor(opts,runtime){
-		//this.runtime = globalThis.c3_runtimeInterface._GetLocalRuntime();
 		this.runtime = runtime;
 		this.parseConfig(opts);
-		if(C3.Plugins.Audio){
-			this.act_PlayByName = C3.Plugins.Audio.Acts.PlayByName;
-		}
+		this.preload();
 	}
 
 	parseConfig(opts){
@@ -115,14 +825,17 @@ globalThis.AudioSource = class AudioSource {
 		if(!this.volume)this.volume = 0;
 	}
 
-	getAudioSdkInstance(){
-		if(!this.audio){
-			var plugin = this.runtime.GetSingleGlobalObjectClassByCtor(C3.Plugins.Audio);
-			if(plugin){
-				this.audio = plugin.GetSingleGlobalInstance().GetSdkInstance();
-			}
-		}
-		return this.audio;
+	getProuiSdkInstance(){
+		return globalThis.Aekiro ? globalThis.Aekiro.prouiSdkInstance : null;
+	}
+
+	preload(){
+		if(!this.fileName)return;
+		var proui = this.getProuiSdkInstance();
+		if(!proui || !proui._postToDOM)return;
+		proui._postToDOM("audio-preload", {
+			fileName: this.fileName
+		});
 	}
 
 	setVolume(v){
@@ -132,12 +845,15 @@ globalThis.AudioSource = class AudioSource {
 	play(){
 		//console.log(this.fileName,this.volume);
 		if(!this.fileName)return;
-		var audio = this.getAudioSdkInstance();
-		if(!audio){
-			console.error("ProUI: Please add the Audio plugin to the project.");
+		var proui = this.getProuiSdkInstance();
+		if(!proui || !proui._postToDOM){
+			console.error("ProUI: DOM-side audio bridge is unavailable.");
 			return;
 		}
-		this.act_PlayByName.call(audio, 1, this.fileName, 0, this.volume, 0, "sound");		
+		proui._postToDOM("audio-play", {
+			fileName: this.fileName,
+			volume: this.volume
+		});
 	}
 };
 
@@ -193,9 +909,9 @@ globalThis.EventManager = class EventManager {
 		options2["propagate"] = false;
 		//bubble the event up the hierarchy
 		if(options["bubble"] === true && this.inst){
-			var go = this.inst.GetUnsavedDataMap().aekiro_gameobject;
+			var go = globalThis.Aekiro.getInstanceData(this.inst).aekiro_gameobject;
 			if(go.parent){
-				go.parent.GetUnsavedDataMap().aekiro_gameobject.eventManager.emit(eventName,options2);
+				globalThis.Aekiro.getInstanceData(go.parent).aekiro_gameobject.eventManager.emit(eventName,options2);
 			}	
 		}
 		
@@ -204,10 +920,10 @@ globalThis.EventManager = class EventManager {
 		//propagate the event down the hierarchy 
 		
 		if(options["propagate"] === true && this.inst){
-			var go = this.inst.GetUnsavedDataMap().aekiro_gameobject;
+			var go = globalThis.Aekiro.getInstanceData(this.inst).aekiro_gameobject;
 			var children = go.children;
 			for (var i = 0, l=children.length; i < l; i++) {
-				children[i].GetUnsavedDataMap().aekiro_gameobject.eventManager.emit(eventName,options);
+				globalThis.Aekiro.getInstanceData(children[i]).aekiro_gameobject.eventManager.emit(eventName,options);
 			}
 		}
 	}
@@ -230,12 +946,20 @@ globalThis.aekiro_goManager = {
 	init : function(runtime){
 		if(this.runtime)return;
 		
-		this.runtime = runtime;		
-		//this is used instead of Release(), because Release() comes after beforelayoutstart and clears everything that was setup.
-		this.runtime.Dispatcher().addEventListener("instancedestroy", function(e){
-			var go = e.instance.GetUnsavedDataMap().aekiro_gameobject;
+		this.runtime = globalThis.Aekiro.compatRuntime(runtime);		
+		//this is used instead of _release(), because _release() comes after beforelayoutstart and clears everything that was setup.
+		this.runtime.addEventListener("instancedestroy", function(e){
+			const inst = e.instance;
+			const data = globalThis.Aekiro.getInstanceData(inst);
+			var go = data.aekiro_gameobject;
 			if(go){
 				go.Release2();	
+			}
+			if (inst) {
+				globalThis.Aekiro.instanceDataMap.delete(inst);
+				if (typeof inst.uid === "number" || typeof inst.uid === "string") {
+					globalThis.Aekiro.instanceDataByUid.delete(inst.uid);
+				}
 			}
 		});
 		
@@ -255,7 +979,7 @@ globalThis.aekiro_goManager = {
 
 		if(this.haltNext)return;
 		
-		var aekiro_gameobject = inst.GetUnsavedDataMap().aekiro_gameobject;
+		var aekiro_gameobject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
 
 		if(!aekiro_gameobject.name){
 			aekiro_gameobject.name = "o"+inst.GetUID();
@@ -312,18 +1036,35 @@ globalThis.aekiro_goManager = {
 		}
 	},
 	
-	createInstance : function (objectClass,layer,x,y){
-		var inst = this.runtime.CreateInstance(this.runtime.GetObjectClassByName(objectClass),layer,x,y);
-		const b = this.runtime.GetEventSheetManager();
-		b.BlockFlushingInstances(!0);
-		//inst._TriggerOnCreated();
-		b.BlockFlushingInstances(!1);
-		//
-		/*if(!noSOLChange){
-			objectClass.GetCurrentSol().SetSinglePicked(inst);
-		}*/
-			
-		return inst;
+	createInstance : function (objectClass,layer,x,y,templateName){
+		this.objectTypeCache = this.objectTypeCache || new Map();
+		const objectTypeKey = String(objectClass).toLowerCase();
+		let objectType = this.objectTypeCache.get(objectTypeKey) || null;
+		if(!objectType && this.runtime.objects){
+			objectType = this.runtime.objects[objectClass] || null;
+			if(!objectType){
+				const objectNames = Object.keys(this.runtime.objects);
+				const match = objectNames.find(name => name.toLowerCase() === objectTypeKey);
+				if(match){
+					objectType = this.runtime.objects[match];
+				}
+			}
+			if(objectType){
+				this.objectTypeCache.set(objectTypeKey, objectType);
+			}
+		}
+		if(!objectType || typeof objectType.createInstance !== "function"){
+			throw new Error("ProUI: Object type not found for clone: " + objectClass);
+		}
+		const layerRef = typeof layer === "string" || typeof layer === "number"
+			? layer
+			: (layer && typeof layer.index === "number" ? layer.index : 0);
+		const px = typeof x === "number" ? x : 0;
+		const py = typeof y === "number" ? y : 0;
+		if(typeof templateName === "string" && templateName.length){
+			return objectType.createInstance(layerRef, px, py, false, templateName);
+		}
+		return objectType.createInstance(layerRef, px, py, false);
 	},
 	
 	clone : function (template,name,parent,layer, x, y,onNodeCreated){
@@ -338,7 +1079,7 @@ globalThis.aekiro_goManager = {
 		
 		//the x,y are global and _clone expect locals, so transform xy into locals in parent space
 		if(parent){
-			var wp = parent.GetWorldInfo();
+			var wp = parent;
 			var res = this.globalToLocal3(x,y,0,wp.GetX(),wp.GetY(),wp.GetAngle());
 			x = res.x;
 			y = res.y;
@@ -346,11 +1087,11 @@ globalThis.aekiro_goManager = {
 		
 		var inst = this._clone(template,name,parent,layer,x,y,onNodeCreated);
 		
-		inst.GetUnsavedDataMap().aekiro_gameobject.children_update();
-		inst.GetUnsavedDataMap().aekiro_gameobject.updateZindex();
+		globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.children_update();
+		globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject.updateZindex();
 		
-		var aekiro_gameobject = inst.GetUnsavedDataMap().aekiro_gameobject;
-		aekiro_gameobject.eventManager.emit("cloned");
+		var aekiro_gameobject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+		aekiro_gameobject.eventManager.emit("cloned",{"bubble":false,"propagate":false});
 		
 		return inst;
 	},
@@ -358,45 +1099,82 @@ globalThis.aekiro_goManager = {
 	_clone : function (t_node,name,parent,layer, x, y, onNodeCreated){
 		//haltNext is used to skip addGo() executed on the instance creation
 		this.haltNext = true;
-		var inst = this.createInstance(t_node.type, layer);
+		var inst = this.createInstance(t_node.type, layer, 0, 0, t_node.templateName);
 		this.haltNext = false;
 
-		var b;
-        try {
-            b = JSON.parse(t_node.json);
-        } catch (a) {
-            return void console.error("Failed to load from JSON string: ", a);
-        }
-		inst.LoadFromJson(b,!0);
+		var aekiro_gameobject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+		var nodeState = t_node.json || null;
+		if (!nodeState) {
+			nodeState = {};
+		} else if (typeof nodeState === "string") {
+	        try {
+	            nodeState = JSON.parse(nodeState);
+	        } catch (a) {
+	            return void console.error("Failed to load from JSON string: ", a);
+	        }
+		} else {
+			nodeState = Object.assign({}, nodeState);
+		}
+		if (!nodeState.gameobject) {
+			nodeState.gameobject = {};
+		} else {
+			nodeState.gameobject = Object.assign({}, nodeState.gameobject);
+		}
+		if (!nodeState.world && t_node.world) {
+			nodeState.world = t_node.world;
+		}
+		if (!nodeState.instanceVars && t_node.instanceVars) {
+			nodeState.instanceVars = t_node.instanceVars;
+		}
+		if (!nodeState.objectProperties && t_node.objectProperties) {
+			nodeState.objectProperties = t_node.objectProperties;
+		}
+		if (!nodeState.scriptBehaviors && t_node.scriptBehaviors) {
+			nodeState.scriptBehaviors = t_node.scriptBehaviors;
+		}
+		nodeState.gameobject.name = "";
+		nodeState.gameobject.parentName = "";
+		nodeState.gameobject.global_x = 0;
+		nodeState.gameobject.global_y = 0;
+
+		globalThis.Aekiro.applyNodeState(inst, nodeState);
 		
-		
-		
-		var aekiro_gameobject = inst.GetUnsavedDataMap().aekiro_gameobject;
 		//aekiro_gameobject.eventManager.emit("cloned");
 		
-		inst.GetUnsavedDataMap().zindex = t_node.zindex;
-		inst.GetSdkInstance().CallAction(aekiro_gameobject.acts.MoveToLayer,layer);
+		globalThis.Aekiro.getInstanceData(inst).zindex = t_node.zindex;
+		inst.moveToLayer(layer);
 
-		
 		aekiro_gameobject.name = "";
 		aekiro_gameobject.parentName = "";
 		if(name)aekiro_gameobject.name = name;
 		this.addGO(inst);
 		//aekiro_gameobject.onCreateInit();
-		
+
+		var wi = inst;
+		var globalX = x;
+		var globalY = y;
+		var globalAngle = typeof t_node.angle === "number" ? t_node.angle : 0;
 		if(parent){
-			parent.GetUnsavedDataMap().aekiro_gameobject.children_add(inst);
+			var wp = parent;
+			globalX = wp.GetX() + x*Math.cos(wp.GetAngle()) - y*Math.sin(wp.GetAngle());
+			globalY = wp.GetY() + x*Math.sin(wp.GetAngle()) + y*Math.cos(wp.GetAngle());
+			globalAngle = wp.GetAngle() + globalAngle;
 		}
-		
-		var wi = inst.GetWorldInfo();
-		wi.SetX(x,true);
-		wi.SetY(y,true);
+		wi.SetX(globalX);
+		wi.SetY(globalY);
+		if(typeof t_node.angle === "number"){
+			wi.SetAngle(globalAngle);
+		}
+
+		if(parent){
+			globalThis.Aekiro.getInstanceData(parent).aekiro_gameobject.children_add(inst);
+		}
 		wi.SetBboxChanged();
 		
 		if(onNodeCreated)onNodeCreated(inst);
 		
 		//we put the trigger after the json state is applied, so that any modif happening in the eventsheet onCreated wont be overrided by the LoadFromJsonString
-		inst._TriggerOnCreated();
+		//inst._postCreate();
 		
 		
 		var child;
@@ -417,17 +1195,7 @@ globalThis.aekiro_goManager = {
 	},
 	
 	registerGameObjects : function(){
-		const addonManager = this.runtime._addonManager ? this.runtime._addonManager : this.runtime._pluginManager;
-		var aekiro_gameobjectBehaviorBase;
-		if (C3?.AddonManager?.GetBehaviorByConstructorFunction)
-		{
-			aekiro_gameobjectBehaviorBase = C3.AddonManager.GetBehaviorByConstructorFunction(C3.Behaviors.aekiro_gameobject);
-		} else {
-			aekiro_gameobjectBehaviorBase = addonManager._behaviorsByCtor.get(C3.Behaviors.aekiro_gameobject);
-		}
-		if(!aekiro_gameobjectBehaviorBase) return;
-		
-		var insts = aekiro_gameobjectBehaviorBase.GetInstances();
+		var insts = globalThis.Aekiro.getBehaviorInstances("aekiro_gameobject");
 		var l = insts.length;
 		for (var i = 0; i < l; i++){
 			//we check for IsDestroyed: somehow when objects on a global layer get destroyed and recreated going from layer to another
@@ -443,9 +1211,9 @@ globalThis.aekiro_goManager = {
 		var parentSameLayer = {};
 		for(key in this.gos){
 			go = this.gos[key];
-			aekiro_gameobject = go.GetUnsavedDataMap().aekiro_gameobject;
+			aekiro_gameobject = globalThis.Aekiro.getInstanceData(go).aekiro_gameobject;
 			if(aekiro_gameobject.parentName && this.gos[aekiro_gameobject.parentName]){
-				this.gos[aekiro_gameobject.parentName].GetUnsavedDataMap().aekiro_gameobject.children_add(go);
+				globalThis.Aekiro.getInstanceData(this.gos[aekiro_gameobject.parentName]).aekiro_gameobject.children_add(go);
 			}
 			if(aekiro_gameobject.parentSameLayer){
 				parentSameLayer[key] = go;
@@ -454,13 +1222,13 @@ globalThis.aekiro_goManager = {
 		
 		for(key in parentSameLayer){
 			go = parentSameLayer[key];
-			aekiro_gameobject = go.GetUnsavedDataMap().aekiro_gameobject;
-			aekiro_gameobject.children_addFromLayer(aekiro_gameobject.GetWorldInfo().GetLayer());
+			aekiro_gameobject = globalThis.Aekiro.getInstanceData(go).aekiro_gameobject;
+			aekiro_gameobject.children_addFromLayer(aekiro_gameobject.GetLayer());
 		}
 		
 		//the onCreated trigger is executed before the children_register; so when a modif is applied to the parent on the trigger, the chidlren dont get updated
 		for(key in this.gos){
-			this.gos[key].GetUnsavedDataMap().aekiro_gameobject.children_update();
+			globalThis.Aekiro.getInstanceData(this.gos[key]).aekiro_gameobject.children_update();
 		}
 		
 		//console.log("childrenRegistred");
@@ -471,7 +1239,13 @@ globalThis.aekiro_goManager = {
 		var key, inst;
 		for(key in this.gos){
 			inst = this.gos[key];
-			inst.GetUnsavedDataMap().aekiro_gameobject.removeFromParent();
+			var go = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+			if(!go){
+				continue;
+			}
+			go.removeFromParent();
+			go.removeAllChildren();
+			go.parent = null;
 		}
 	}
 
@@ -479,30 +1253,30 @@ globalThis.aekiro_goManager = {
 
 
 
-globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBase
+globalThis.Aekiro.button = class aekiro_button extends globalThis.ISDKBehaviorInstanceBase
 {
-	constructor(behInst,properties)
+	constructor()
 	{
-		super(behInst);
+		super();
 	}
 
 	button_constructor()
 	{
 
-		this.proui = this.GetRuntime().GetSingleGlobalObjectClassByCtor(C3.Plugins.aekiro_proui);
+		this.proui = globalThis.IPlugin.getByConstructor(C3.Plugins.aekiro_proui);
 		if(this.proui){
-			this.proui = this.proui.GetSingleGlobalInstance().GetSdkInstance();
+			this.proui = this.proui.getSingleGlobalInstance();
 		}
-		this.proui.isTypeValid(this.GetObjectInstance(),[C3.Plugins.Sprite,C3.Plugins.NinePatch,C3.Plugins.TiledBg],"Pro UI: Button behavior is only applicable to Sprite, 9-patch or tiled backgrounds objects.");
+		this.proui.isTypeValid(this.instance,[C3.Plugins.Sprite,C3.Plugins.NinePatch,C3.Plugins.TiledBg],"Pro UI: Button behavior is only applicable to Sprite, 9-patch or tiled backgrounds objects.");
 		
-		this.inst = this.GetObjectInstance();
-		this.wi = this.inst.GetWorldInfo();
+		this.inst = this.instance;
+		this.wi = this.inst;
 		this.goManager = globalThis.aekiro_goManager;
 		this.scrollViews = globalThis.aekiro_scrollViewManager.scrollViews;
 		this.aekiro_dialogManager = globalThis.aekiro_dialogManager;
-		this.GetObjectInstance().GetUnsavedDataMap().aekiro_button = this;
+		globalThis.Aekiro.getInstanceData(this.instance).aekiro_button = this;
 		//*********************************
-		this.isInstanceOfSprite = this.GetObjectInstance().GetPlugin().constructor == C3.Plugins.Sprite;
+		this.isInstanceOfSprite = globalThis.Aekiro.isInstanceOfPlugin(this.instance, C3.Plugins.Sprite);
 		this.STATES = {NORMAL:0, HOVER:1, CLICKED:2 , DISABLED:3, FOCUSED:4};
 		this.isOnMobile = C3.Platform.IsMobile;
 		this.isTouchStarted = false;
@@ -521,14 +1295,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		//console.log("constructor aekiro_buttonB");
 	}
 	
-	PostCreate(){
-		this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
-		this.sdkInstance = this.GetObjectInstance().GetSdkInstance();
-		this.sdkInstance_callAction = this.sdkInstance.CallAction;
-		this.sdkInstance_callExpression = this.sdkInstance.CallExpression;
-		this.sdkInstance_acts = this.GetObjectInstance().GetPlugin().constructor.Acts;
-		this.sdkInstance_exps = this.GetObjectInstance().GetPlugin().constructor.Exps;
-
+	_postCreate(){
 		/*if(this.goManager.haltNext)return;//this is mainly to avoid calling the following when cloning, because it's get called before LoadFromJson
 		
 		this.updateView();*/
@@ -557,8 +1324,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 	//
 	onInitPropsLoaded(){
 		var t = this.initProps.color;
-		this.initProps.color  = new C3.Color();
-		this.initProps.color.setFromJSON(t);
+		this.initProps.color = t;
 	}
 	
 	updateView(){
@@ -568,7 +1334,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 	
 	updateViewTick(){
 		this.updateV = true;
-		this._StartTicking();
+		this._setTicking(true);
 	}
 	
 	setEnabled(isEnabled){
@@ -599,6 +1365,12 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		if(!isNaN(anim) || !anim){
 			anim = defaults?defaults["a"]:this.initProps.animationName;
 		}
+		if(anim != null){
+			anim = String(anim);
+			if(!anim.length){
+				anim = null;
+			}
+		}
 		var res =  {
 			"f": frame,
 			"a": anim
@@ -609,8 +1381,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 	
 	parseColor(color,defaultColor){
 		if(color){
-			color = color.split(",");
-			color = new C3.Color(color[0]/255, color[1]/255, color[2]/255,1);
+			color = color.split(",").map((value) => parseInt(value, 10));
 		}else{
 			if(defaultColor !== undefined){
 				color = defaultColor;
@@ -622,16 +1393,16 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 	}
 	
 	initSounds(){
-		var map = this.GetObjectInstance().GetUnsavedDataMap();
+		var map = globalThis.Aekiro.getInstanceData(this.instance);
 		if(!map.audioSources){
 			map.audioSources = {};
 		}
 		var AudioSource = globalThis.AudioSource;
 
 		this.audioSources = map.audioSources;
-		this.audioSources.click = new AudioSource(this.clickSound,this.GetRuntime());
-		this.audioSources.hover = new AudioSource(this.hoverSound,this.GetRuntime());
-		this.audioSources.focus = new AudioSource(this.focusSound,this.GetRuntime());	
+		this.audioSources.click = new AudioSource(this.clickSound,this.runtime);
+		this.audioSources.hover = new AudioSource(this.hoverSound,this.runtime);
+		this.audioSources.focus = new AudioSource(this.focusSound,this.runtime);	
 	}
 	
 	initColors(){
@@ -662,18 +1433,18 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		}
 		
 		if(color){
-			this.wi.SetUnpremultipliedColor(color);
+			this.wi.colorRgb = color;
 			this.wi.SetBboxChanged();
 		}
 	}
 	
 	setInitProps(){
 		if(this.isInstanceOfSprite){
-			this.initProps.animationFrame = this.initProps.animationFrame===null?this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationFrame):this.initProps.animationFrame;
-			this.initProps.animationName = this.initProps.animationName || this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationName);	
+			this.initProps.animationFrame = this.initProps.animationFrame===null ? this.instance.animationFrame : this.initProps.animationFrame;
+			this.initProps.animationName = this.initProps.animationName || this.instance.animationName;	
 		}
 
-		this.initProps.color = this.initProps.color || this.wi.GetUnpremultipliedColor();
+		this.initProps.color = this.initProps.color || this.wi.colorRgb;
 		//console.log(this.initProps);
 	}
 	
@@ -717,11 +1488,11 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		
 		//console.log(frame,anim);
 		
-		if(anim){
-			this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnim,anim,0);
+		if(typeof anim === "string" && anim.length){
+			this.instance.setAnimation(anim, "beginning");
 		}
 		if(frame !== null){
-			this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnimFrame,frame,0);
+			this.instance.animationFrame = frame;
 		}
 	}
 	
@@ -782,7 +1553,6 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		
 	//**************************
 	OnAnyInputDown(x, y) {
-		//console.log("_OnInputDown"+x+"***"+y+"***"+source);		
 		if (this.wi.ContainsPoint(x, y)){
 			this.OnInputDown(x,y);
 		}
@@ -828,8 +1598,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 				this.targetDelta.y += this.targetDelta_focus.y;
 
 				this.setAnimations(this.focusAnimation);;
-				this._StartTicking();
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+				this._setTicking(true);
+				this.tween["start"](this.runtime.GetWallTime()*1000);
 			}
 
 			if(this.OnFocusedC)this.OnFocusedC();
@@ -849,8 +1619,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 				this.targetDelta.y -= this.targetDelta_focus.y;
 
 				this.setAnimations(this.focusAnimation);
-				this._StartTicking();
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);			
+				this._setTicking(true);
+				this.tween["start"](this.runtime.GetWallTime()*1000);			
 			}
 
 			if(this.OnUnFocusedC)this.OnUnFocusedC();
@@ -887,8 +1657,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			this.targetDelta.x += this.targetDelta_hover.x;
 			this.targetDelta.y += this.targetDelta_hover.y;
 			this.setAnimations(this.hoverAnimation);
-			this._StartTicking();
-			this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+			this._setTicking(true);
+			this.tween["start"](this.runtime.GetWallTime()*1000);
 		}
 
 		//console.log("ProUI-Button uid=%s: On Mouse Enter",this.inst.uid);
@@ -898,7 +1668,6 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		/*var res = await this.isOnMovingScrollView();
 		if(res)return;*/
 		
-		//console.log("_OnInputDown"+x+"***"+y);
 		//Ignore if the button is already being clicked, or not clickable
 		if(!this.isClickable(x,y) || this.isTouchStarted)return;
 
@@ -918,8 +1687,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			this.targetDelta.y += this.targetDelta_click.y;
 			
 			this.setAnimations(this.clickAnimation);
-			this._StartTicking();
-			this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+			this._setTicking(true);
+			this.tween["start"](this.runtime.GetWallTime()*1000);
 		}
 		
 		//focus
@@ -932,8 +1701,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			this.targetDelta.y += this.targetDelta_focus.y;
 
 			this.setAnimations(this.focusAnimation);
-			this._StartTicking();
-			this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+			this._setTicking(true);
+			this.tween["start"](this.runtime.GetWallTime()*1000);
 		}
 
 		if(!this.isFocused){ 
@@ -964,8 +1733,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			this.targetDelta.y -= this.targetDelta_click.y;
 			
 			this.setAnimations(this.clickAnimation);
-			this._StartTicking();
-			this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+			this._setTicking(true);
+			this.tween["start"](this.runtime.GetWallTime()*1000);
 		}
 		
 		if(this.wi.ContainsPoint(x,y)){
@@ -1027,8 +1796,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			//this.setAnimations(this.hoverAnimation);
 			//this.tween["easing"](Tween["Easing"]["Quadratic"]["Out"])["to"]({ x: 0, y: 0,width: 0, height: 0}, 100);
 			this.tween["easing"](Tween["Easing"]["Quadratic"]["Out"])["to"](this.targetDelta, 100);
-			this._StartTicking();
-			this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+			this._setTicking(true);
+			this.tween["start"](this.runtime.GetWallTime()*1000);
 		}
 			
 		if(this.OnMouseLeaveC)this.OnMouseLeaveC();
@@ -1040,11 +1809,11 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		this.ignoreInput = state;
 	}
 
-	Tick(){
+	_tick(){
 	
 		if(this.updateV){
 			this.updateView();
-			this._StopTicking();
+			this._setTicking(false);
 			this.updateV = false;
 			//console.log("updateV");
 			return;
@@ -1056,7 +1825,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 		}
 
 		if(this.tween["isPlaying"]){
-			this.tween["update"](this.GetRuntime().GetWallTime()*1000);
+			this.tween["update"](this.runtime.GetWallTime()*1000);
 			this.isTweenPlaying = true;
 		}
 
@@ -1067,7 +1836,7 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			this.wi.SetBboxChanged();
 			this.prev = {x : this.currentDelta.x, y : this.currentDelta.y, width : this.currentDelta.width, height : this.currentDelta.height};
 		}else{
-			this._StopTicking();	
+			this._setTicking(false);	
 		}
 	}
 	
@@ -1077,40 +1846,50 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 			x = this.wi.GetBoundingBox().getLeft()+10;
 			y = this.wi.GetBoundingBox().getTop()+10;
 		}
-		
+
+		var isVisible = (this.wi.GetLayer().IsVisible() && this.wi.IsVisible());
+
 		if(this.ignoreInput === 1 || this.proui.ignoreInput){
 			return false;
 		}
 
 		if(this.ignoreInput == 0){
-			return true;
+			return this.isEnabled && isVisible;
 		}
 
-		var isVisible = (this.wi.GetLayer().IsVisible() && this.wi.IsVisible());
-
 		var isInsideScrollView = this.isInsideScrollView(x,y);
-
 		var isUnder = false;
 		if(this.ignoreInput === 2 && this.aekiro_dialogManager){
 			isUnder = this.aekiro_dialogManager.isInstanceUnderModal(this.wi.GetLayer().GetIndex());
 		}
-
 		return this.isEnabled && isVisible && !isUnder && isInsideScrollView;
 	}
 	
 	isInsideScrollView(x,y){ 
 		//return true;
 		var insideScrollView = true;
-		var scrollView = this.scrollViews["l"+this.inst.GetWorldInfo().GetLayer().GetIndex()];
+		var scrollViews = globalThis.aekiro_scrollViewManager ? globalThis.aekiro_scrollViewManager.scrollViews : this.scrollViews;
+		var key = "l"+this.inst.GetLayer().GetIndex();
+		var scrollView = scrollViews[key];
+		if(globalThis.aekiro_scrollViewManager && globalThis.aekiro_scrollViewManager._isStale(scrollView)){
+			delete scrollViews[key];
+			scrollView = null;
+		}
 		if(scrollView){
-			insideScrollView = scrollView.GetWorldInfo().ContainsPoint(x, y);
+			insideScrollView = scrollView.ContainsPoint(x, y);
 		}
 		return insideScrollView;
 	}
 
 	isOnScrollView(){ 
 		var onScrollView = true;
-		var scrollView = this.scrollViews["l"+this.inst.GetWorldInfo().GetLayer().GetIndex()];
+		var scrollViews = globalThis.aekiro_scrollViewManager ? globalThis.aekiro_scrollViewManager.scrollViews : this.scrollViews;
+		var key = "l"+this.inst.GetLayer().GetIndex();
+		var scrollView = scrollViews[key];
+		if(globalThis.aekiro_scrollViewManager && globalThis.aekiro_scrollViewManager._isStale(scrollView)){
+			delete scrollViews[key];
+			scrollView = null;
+		}
 		if(scrollView){
 			return true;	
 		}else{
@@ -1121,12 +1900,17 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 
 	isOnMovingScrollView(delay) {
 		if(delay==undefined)delay = 20;
-		var scrollView = this.scrollViews["l"+this.inst.GetWorldInfo().GetLayer().GetIndex()];
+		var scrollViews = globalThis.aekiro_scrollViewManager ? globalThis.aekiro_scrollViewManager.scrollViews : this.scrollViews;
+		var key = "l"+this.inst.GetLayer().GetIndex();
+		var scrollView = scrollViews[key];
+		if(globalThis.aekiro_scrollViewManager && globalThis.aekiro_scrollViewManager._isStale(scrollView)){
+			delete scrollViews[key];
+			scrollView = null;
+		}
 		if(scrollView){
 			return new Promise(resolve => {	  	
 			setTimeout(() => {
-				if(scrollView.GetUnsavedDataMap().aekiro_scrollView.isMoving()){
-					console.log("moving");
+				if(globalThis.Aekiro.getInstanceData(scrollView).aekiro_scrollView.isMoving()){
 					resolve(true);
 				}else{
 					resolve(false);
@@ -1140,8 +1924,8 @@ globalThis.Aekiro.button = class aekiro_button extends C3.SDKBehaviorInstanceBas
 
 
 
-	Release(){
-		super.Release();
+	_release(){
+		super._release();
 	}
 	//**************************
 	
@@ -1251,25 +2035,32 @@ globalThis.Aekiro.button.Acts = {
 
 globalThis.Aekiro.checkbox = class aekiro_checkbox extends globalThis.Aekiro.button
 {
-	constructor(behInst,properties){
-		super(behInst,properties);
+	constructor()
+	{
+		super();
+		const properties = this._getInitProperties();
 	}
 	
 	checkbox_constructor(){
 		this.button_constructor();
+		globalThis.Aekiro.getInstanceData(this.instance).aekiro_checkbox = this;
 		this.frameAnim = [[],[]];
+	}
+
+	hasCheckboxFrameSupport(){
+		return !!this.instance && typeof this.instance.setAnimation === "function" && "animationFrame" in this.instance;
 	}
 
 	initFrameAnim(){
 		this.useStates = true;
-		
-		if(!this.isInstanceOfSprite || (this.frame_normal=="" && this.frame_hover=="" && this.frame_disabled=="")){
+
+		if(!this.hasCheckboxFrameSupport() || (this.frame_normal=="" && this.frame_hover=="" && this.frame_disabled=="")){
 			this.useStates = false;
 			return;
 		}
 		
-		this.cur_AnimationFrame = this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationFrame);
-		this.cur_AnimationName = this.sdkInstance.CallExpression(this.sdkInstance_exps.AnimationName);
+		this.cur_AnimationFrame = this.instance.animationFrame;
+		this.cur_AnimationName = this.instance.animationName;
 		
 		var f = this.frame_normal.split(',');
 		this.frameAnim[0][this.STATES.NORMAL] = this.parseFrameAnim(f[0]);
@@ -1319,16 +2110,16 @@ globalThis.Aekiro.checkbox = class aekiro_checkbox extends globalThis.Aekiro.but
 		
 		//console.log(frame,anim);
 		
-		if(anim){
-			this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnim,anim,0);
+		if(typeof anim === "string" && anim.length && this.instance.setAnimation){
+			this.instance.setAnimation(anim, "beginning");
 		}
 		if(frame !== null){
-			this.sdkInstance.CallAction(this.sdkInstance_acts.SetAnimFrame,frame,0);
+			this.instance.animationFrame = frame;
 		}
 	}
 	
 	initColors(){
-		this.cur_color = this.wi.GetUnpremultipliedColor();
+		this.cur_color = this.wi.colorRgb;
 		this.colors = [[],[]];
 		
 		var c;
@@ -1374,7 +2165,7 @@ globalThis.Aekiro.checkbox = class aekiro_checkbox extends globalThis.Aekiro.but
 		}
 		
 		if(color){
-			this.wi.SetUnpremultipliedColor(color);
+			this.wi.colorRgb = color;
 			this.wi.SetBboxChanged();
 		}
 	}
@@ -1402,33 +2193,55 @@ globalThis.Aekiro.checkbox = class aekiro_checkbox extends globalThis.Aekiro.but
 globalThis.aekiro_scrollViewManager = { 
 	scrollViews : {},
 
+	_isStale : function(inst){
+		if(!inst){
+			return true;
+		}
+		try{
+			if(inst.IsDestroyed && inst.IsDestroyed()){
+				return true;
+			}
+		}catch(_err){
+			return true;
+		}
+		try{
+			if(inst._sdkInst && inst._sdkInst._wasReleased){
+				return true;
+			}
+		}catch(_err){
+		}
+		return false;
+	},
+
 
 	add : function(inst){
-		this.scrollViews["l"+inst.GetWorldInfo().GetLayer().GetIndex()] = inst;
+		globalThis.Aekiro.compatWorldInstance(inst);
+		this.scrollViews["l"+inst.GetLayer().GetIndex()] = inst;
 	},
 	
 	remove : function(inst){
 		for(var key in this.scrollViews){
-			if(this.scrollViews[key]==inst){
+			if(this.scrollViews[key] == inst || this._isStale(this.scrollViews[key])){
 				delete this.scrollViews[key];
 			}
 		}
-		//delete this.scrollViews["l"+inst.GetWorldInfo().GetLayer().GetIndex()];
+		//delete this.scrollViews["l"+inst.GetLayer().GetIndex()];
 	},
 	
 	//test if inst (a scrollview) overlaps with a scroll on x,y
 	isOverlaped : function(inst,x,y){
-		var n = inst.GetRuntime().GetMainRunningLayout().GetLayerCount();
+		globalThis.Aekiro.compatWorldInstance(inst);
+		var n = inst.runtime.GetMainRunningLayout().GetLayerCount();
 		var scrollView;
 		var isOverlaped = false;
-		for (var i = inst.GetWorldInfo().GetLayer().GetIndex()+1,l = n; i < l; i++) {
+		for (var i = inst.GetLayer().GetIndex()+1,l = n; i < l; i++) {
 			scrollView = this.scrollViews["l"+i];
 			if(scrollView){
-				if(!scrollView.GetWorldInfo().GetLayer().IsVisible()){
+				if(!scrollView.GetLayer().IsVisible()){
 					continue;
 				}
 
-				if(scrollView.GetWorldInfo().ContainsPoint(x,y)){
+				if(scrollView.ContainsPoint(x,y)){
 					isOverlaped = true;
 					break;
 				}
@@ -1464,7 +2277,7 @@ globalThis.aekiro_dialogManager = {
 	},
 	isModalDialogOpened : function(){
 		for (var i = 0; i < this.currentDialogs.length; i++) {
-			if(this.currentDialogs[i].GetUnsavedDataMap().aekiro_dialog.isModal){
+			if(globalThis.Aekiro.getInstanceData(this.currentDialogs[i]).aekiro_dialog.isModal){
 				return true;
 			}
 		}
@@ -1472,7 +2285,7 @@ globalThis.aekiro_dialogManager = {
 	},
 	isInstanceUnder : function(layerIndex){
 		for (var i = 0,l=this.currentDialogs.length; i < l; i++) {
-			if(layerIndex<this.currentDialogs[i].GetWorldInfo().GetLayer().GetIndex()){
+			if(layerIndex<this.currentDialogs[i].GetLayer().GetIndex()){
 				return true;
 			}
 		}
@@ -1482,7 +2295,7 @@ globalThis.aekiro_dialogManager = {
 		var dialog;
 		for (var i = 0,l=this.currentDialogs.length; i < l; i++) {
 			dialog = this.currentDialogs[i];
-			if(layerIndex<dialog.GetWorldInfo().GetLayer().GetIndex() && dialog.GetUnsavedDataMap().aekiro_dialog.isModal){
+			if(layerIndex<dialog.GetLayer().GetIndex() && globalThis.Aekiro.getInstanceData(dialog).aekiro_dialog.isModal){
 				return true;
 			}
 		}

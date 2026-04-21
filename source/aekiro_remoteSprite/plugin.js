@@ -1,9 +1,8 @@
 "use strict";
 {
-	const SDK = self.SDK;
-	const lang = self.lang;
+	const SDK = globalThis.SDK;
+	const lang = globalThis.lang;
     const PLUGIN_ID = "aekiro_remoteSprite";
-    const PLUGIN_VERSION = "1.822";
     const PLUGIN_CATEGORY = "general";
 
     let app = null;
@@ -18,7 +17,6 @@
 
             this._info.SetName(lang(".name"));
             this._info.SetDescription(lang(".description"));
-            this._info.SetVersion(PLUGIN_VERSION);
             this._info.SetCategory(PLUGIN_CATEGORY);
             this._info.SetAuthor("Aekiro");
             this._info.SetHelpUrl(lang(".help-url"));
@@ -35,10 +33,7 @@
             this._info.SetIsTiled(false);
             this._info.SetIsSingleGlobal(false);
             this._info.SetIsDeprecated(false);
-            this._info.SetCanBeBundled(true); 
-            
-
-            this._info.SetSupportedRuntimes(["c3"]);
+            this._info.SetCanBeBundled(true);
 
             SDK.Lang.PushContext(".properties");
 

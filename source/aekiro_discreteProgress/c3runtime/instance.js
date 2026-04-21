@@ -1,47 +1,80 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_discreteProgress.Instance = class aekiro_discreteProgressInstance extends C3.SDKBehaviorInstanceBase {
-		constructor(behInst, properties)
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_discreteProgress.Instance = class aekiro_discreteProgressInstance extends globalThis.ISDKBehaviorInstanceBase {
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 			//properties
 			this.value  = properties[0];
 			
 			//**************************
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_discreteProgress = this;
 			this.parts = [];
 			this.goManager = globalThis.aekiro_goManager;
+			this.isInit = false;
+			this._isCloneListenerAttached = false;
 			
-			this.goManager.eventManager.on("childrenRegistred",() => this.init(),{"once":true});
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() => this.init());
 		}
 	
 	
-		PostCreate(){
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
-			if(this.aekiro_gameobject){
-				this.aekiro_gameobject.eventManager.on("cloned",() => this.init(),{"once":true});
+		_postCreate(){
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_discreteProgress = this;
+		}
+
+		ensureGameObject(){
+			let inst = this.instance;
+			try{
+				inst = this.instance;
+			}catch(_err){
+				return null;
 			}
+			if(!inst){
+				return null;
+			}
+			const currentGameObject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+			if(currentGameObject && currentGameObject !== this.aekiro_gameobject){
+				this.aekiro_gameobject = currentGameObject;
+				if(!this._isCloneListenerAttached && this.aekiro_gameobject.eventManager){
+					this.aekiro_gameobject.eventManager.on("cloned",() => {
+						this.isInit = false;
+						this.init();
+					},{"once":true});
+					this._isCloneListenerAttached = true;
+				}
+			}
+			return this.aekiro_gameobject;
 		}
 		
 		init(){
-			if(!this.aekiro_gameobject){
-				return;	
+			if(this.isInit){
+				return true;
+			}
+			if(!this.ensureGameObject()){
+				this.isInit = false;
+				return false;	
 			}
 			var children = this.aekiro_gameobject.children;
+			if(!children.length){
+				this.isInit = false;
+				return false;
+			}
 			this.max = children.length;
 			var b;
 			var l = this.max;
 			for (var i = 0; i < l; i++) {
-				b = children[i].GetUnsavedDataMap().aekiro_discreteProgressPart;
+				b = globalThis.Aekiro.getInstanceData(children[i]).aekiro_discreteProgressPart;
 				this.parts[b.index] = children[i];
-				b.PostCreate();
+				b._postCreate();
 			}
 			
 			this.value = C3.clamp(this.value,0,this.max);
 			this.updateView();
+			this.isInit = true;
 			//console.log(this.parts);
+			return true;
 		}
 
 		isValueValid(value){
@@ -65,7 +98,7 @@
 		updateView(){
 			var b;
 			for (var i = 0; i < this.max; i++) {
-				b = this.parts[i].GetUnsavedDataMap().aekiro_discreteProgressPart;
+				b = globalThis.Aekiro.getInstanceData(this.parts[i]).aekiro_discreteProgressPart;
 				b.setFrameAnim(0);
 			}
 			
@@ -73,12 +106,12 @@
 			var remainder = this.value % 1;
 			
 			for (var i = 0; i < integer; i++) {
-				b = this.parts[i].GetUnsavedDataMap().aekiro_discreteProgressPart;
+				b = globalThis.Aekiro.getInstanceData(this.parts[i]).aekiro_discreteProgressPart;
 				b.setFrameAnim(2);
 			}
 			
 			if(i < this.max && remainder >= 0.5){
-				b = this.parts[i].GetUnsavedDataMap().aekiro_discreteProgressPart;
+				b = globalThis.Aekiro.getInstanceData(this.parts[i]).aekiro_discreteProgressPart;
 				b.setFrameAnim(1);
 			}
 		}
@@ -87,19 +120,23 @@
 	
 		
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
+			super._release();
 		}
 	
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				"value": this.value
 			};
 		}
 	
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			this.value  = o["value"];
 		}

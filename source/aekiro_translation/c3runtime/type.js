@@ -1,20 +1,20 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Plugins.aekiro_translation.Type = class aekiro_translationSingleGlobalType extends C3.SDKTypeBase
+	const C3 = globalThis.C3;
+	C3.Plugins.aekiro_translation.Type = class aekiro_translationSingleGlobalType extends globalThis.ISDKObjectTypeBase
 	{
-		constructor(objectClass)
+		constructor()
 		{
-			super(objectClass);
+			super();
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 		
-		OnCreate()
+		_onCreate()
 		{	
 		}
 	};

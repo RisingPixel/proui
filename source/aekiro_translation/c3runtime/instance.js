@@ -1,12 +1,13 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Plugins.aekiro_translation.Instance = class aekiro_translationSingleGlobalInstance extends C3.SDKInstanceBase
+	const C3 = globalThis.C3;
+	C3.Plugins.aekiro_translation.Instance = class aekiro_translationSingleGlobalInstance extends globalThis.ISDKInstanceBase
 	{
-		constructor(inst, properties)
+		constructor()
 		{
-			super(inst);
+			super();
+			const properties = this._getInitProperties();
 			
 			this.data = {};
 		}
@@ -26,35 +27,33 @@
 		translateAll (lang){
 			if(!this.data[lang])return;
 
-			const addonManager = this.GetRuntime()._addonManager ? this.GetRuntime()._addonManager : this.GetRuntime()._pluginManager;
-			var aekiro_translationBehaviorBase = addonManager._behaviorsByCtor.get(C3.Behaviors.aekiro_translationB);
-			var insts = aekiro_translationBehaviorBase.GetInstances();
+			var insts = globalThis.Aekiro.getBehaviorInstances("aekiro_translationB");
 
 			var key,aekiro_translation,value;
 			var l = insts.length; 
 			for (var i = 0; i < l; i++){
-				aekiro_translation = insts[i].GetUnsavedDataMap().aekiro_translation;
+				aekiro_translation = globalThis.Aekiro.getInstanceData(insts[i]).aekiro_translation;
 				key = aekiro_translation.key;
-				value = self["_"].get(this.data[lang],key);
+				value = globalThis["_"].get(this.data[lang],key);
 				if(value!=undefined){
 					aekiro_translation.updateView(value);
 				}
 			}
 		}
 	
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 		
-		SaveToJson()
+		_saveToJson()
 		{
 			return {
 				// data to be saved for savegames
 			};
 		}
 		
-		LoadFromJson(o)
+		_loadFromJson(o)
 		{
 			// load state for savegames
 		}

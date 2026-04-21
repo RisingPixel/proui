@@ -1,7 +1,7 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	C3.Behaviors.aekiro_gridView.Acts = {
 		SetDataByJsonString(data,root){
 			try {
@@ -20,7 +20,19 @@
 		},
 		
 		SetDataByJsonObject(jsonObject, root){
-			var data = jsonObject.GetFirstPicked().GetSdkInstance()._data;
+			var jsonInst = null;
+			if(jsonObject){
+				if(typeof jsonObject.getFirstPickedInstance === "function"){
+					jsonInst = jsonObject.getFirstPickedInstance();
+				}
+				if(!jsonInst && typeof jsonObject.getFirstInstance === "function"){
+					jsonInst = jsonObject.getFirstInstance();
+				}
+			}
+			if(!jsonInst){
+				return;
+			}
+			var data = jsonInst.getJsonDataCopy();
 			if(root){
 				data = data[root];
 			}

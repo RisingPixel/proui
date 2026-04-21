@@ -26,8 +26,6 @@
 			this._info.SetMustPreDraw(false);
 			this._info.SetCanBeBundled(true);
 
-			this._info.SetSupportedRuntimes(["c3"]);	// c3 for stubs only!
-
 			SDK.Lang.PushContext(".properties");
 			this._info.SetProperties([
 			]);

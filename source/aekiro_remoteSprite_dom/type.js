@@ -4,9 +4,9 @@
 
     PLUGIN_CLASS.Type = class RemoteSpriteIType extends SDK.ITypeBase
     {
-        constructor(sdkPlugin, iObjectType)
-        {
-            super(sdkPlugin, iObjectType);
-        }
+        constructor()
+		{
+			super();
+		}
     };
 }

@@ -1,21 +1,20 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	
-	C3.Behaviors.aekiro_checkbox.Type = class aekiro_checkboxType extends C3.SDKBehaviorTypeBase
+	C3.Behaviors.aekiro_checkbox.Type = class aekiro_checkboxType extends globalThis.ISDKBehaviorTypeBase
 	{
-		constructor(behaviorType)
+		constructor() {
+            super();
+        }
+		
+		_release()
 		{
-			super(behaviorType);
+			super._release();
 		}
 		
-		Release()
-		{
-			super.Release();
-		}
-		
-		OnCreate()
+		_onCreate()
 		{	
 		}
 	};

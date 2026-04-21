@@ -1,13 +1,14 @@
 "use strict";
 {
-    const C3 = self.C3;
+    const C3 = globalThis.C3;
     const tempQuad = C3.New(C3.Quad);
 
-    C3.Plugins.aekiro_remoteSprite.Instance = class RemoteSpriteInstance extends C3.SDKWorldInstanceBase
+    C3.Plugins.aekiro_remoteSprite.Instance = class RemoteSpriteInstance extends globalThis.ISDKWorldInstanceBase
     {
-        constructor(inst, properties)
-        {
-            super(inst);
+        constructor()
+		{
+			super();
+			const properties = this._getInitProperties();
 
             this.texture = null;
             this.isImageLoaded = false;
@@ -16,12 +17,12 @@
             
         }
 
-        Release()
+        _release()
         {
-            super.Release();
+            super._release();
         }
 
-        Draw(renderer) {
+        _draw(renderer) {
             //return;
 			if(!this.isImageLoaded)return;
 			
@@ -37,11 +38,11 @@
             
             renderer.SetTexture(this.texture);
 
-            const wi = this.GetWorldInfo();
+            const wi = this.instance;
             const quad = wi.GetBoundingQuad();
             const rcTex = new C3.Rect(0,0,1,1);
             
-            if (this._runtime.IsPixelRoundingEnabled())
+            if (this.runtime.IsPixelRoundingEnabled())
             {
                 const ox = Math.round(wi.GetX()) - wi.GetX();
                 const oy = Math.round(wi.GetY()) - wi.GetY();
@@ -57,14 +58,14 @@
 
 
         
-        SaveToJson()
+        _saveToJson()
         {
             return {
                 // data to be saved for savegames
             };
         }
 
-        LoadFromJson(o)
+        _loadFromJson(o)
         {
             // load state for savegames
         }

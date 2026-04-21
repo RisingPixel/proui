@@ -1,16 +1,16 @@
 "use strict";
 
 {
-	const SDK = self.SDK;
+	const SDK = globalThis.SDK;
 	
 
 	const BEHAVIOR_CLASS = SDK.Behaviors.aekiro_gameobject;
 
 	BEHAVIOR_CLASS.Type = class aekiro_gameobjectType extends SDK.IBehaviorTypeBase
 	{
-		constructor(sdkPlugin, iBehaviorType)
+		constructor()
 		{
-			super(sdkPlugin, iBehaviorType);
+			super();
 		}
 	};
 }

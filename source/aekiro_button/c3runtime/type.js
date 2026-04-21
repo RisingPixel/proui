@@ -1,20 +1,19 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Behaviors.aekiro_button.Type = class aekiro_buttonType extends C3.SDKBehaviorTypeBase
+	const C3 = globalThis.C3;
+	C3.Behaviors.aekiro_button.Type = class aekiro_buttonType extends globalThis.ISDKBehaviorTypeBase
 	{
-		constructor(behaviorType)
+		constructor() {
+            super();
+        }
+		
+		_release()
 		{
-			super(behaviorType);
+			super._release();
 		}
 		
-		Release()
-		{
-			super.Release();
-		}
-		
-		OnCreate()
+		_onCreate()
 		{	
 		}
 	};

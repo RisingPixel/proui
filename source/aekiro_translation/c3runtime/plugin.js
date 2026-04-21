@@ -1,17 +1,17 @@
 "use strict";
 
 {
-	const C3 = self.C3;
-	C3.Plugins.aekiro_translation = class aekiro_translationSingleGlobalPlugin extends C3.SDKPluginBase
+	const C3 = globalThis.C3;
+	C3.Plugins.aekiro_translation = class aekiro_translationSingleGlobalPlugin extends globalThis.ISDKPluginBase
 	{
-		constructor(opts)
+		constructor()
 		{
-			super(opts);
+			super();
 		}
 		
-		Release()
+		_release()
 		{
-			super.Release();
+			super._release();
 		}
 	};
 }

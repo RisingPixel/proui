@@ -2,12 +2,13 @@
 
 {
 	const Tween = globalThis["TWEEN"];
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 
-	C3.Behaviors.aekiro_dialog.Instance = class aekiro_dialogInstance extends C3.SDKBehaviorInstanceBase {
-		constructor(behInst, properties)
+	C3.Behaviors.aekiro_dialog.Instance = class aekiro_dialogInstance extends globalThis.ISDKBehaviorInstanceBase {
+		constructor()
 		{
-			super(behInst);
+			super();
+			const properties = this._getInitProperties();
 	
 			//properties
 			if (properties)
@@ -25,19 +26,18 @@
 			}
 	
 			//********************
-			this.proui = this.GetRuntime().GetSingleGlobalObjectClassByCtor(C3.Plugins.aekiro_proui);
+			this.proui = globalThis.IPlugin.getByConstructor(C3.Plugins.aekiro_proui);
 			if(this.proui){
-				this.proui = this.proui.GetSingleGlobalInstance().GetSdkInstance();
+				this.proui = this.proui.getSingleGlobalInstance();
 			}
-			this.GetObjectInstance().GetUnsavedDataMap().aekiro_dialog = this;
-			this.wi = this.GetWorldInfo();
-			this.inst = this.GetObjectInstance();
 			this.aekiro_dialogManager = globalThis.aekiro_dialogManager;
 			this.goManager = globalThis.aekiro_goManager;
 		
 			//*****************************
 			this.isInit = false;
 			this.isOpen = false;
+			this.isCloseButtonSet = false;
+			this._isCloneListenerAttached = false;
 			
 			this.tween = new Tween["Tween"]();
 			this.tween_opacity = new Tween["Tween"](); //a separate tween for opacity: we don't want the opacity to be tweened by elastic 
@@ -55,55 +55,90 @@
 				Tween["Easing"]["Bounce"]["Out"]
 			];
 	
-			this.goManager.eventManager.on("childrenRegistred",() =>{				
+			this._childrenRegisteredListener = this.goManager.eventManager.on("childrenRegistred",() =>{				
 				this.setCloseButton();
 				this.onCreateInit();	
-			},{"once":true}); 
+			}); 
 		}
 	
-		PostCreate(){
-			this.aekiro_gameobject = this.GetObjectInstance().GetUnsavedDataMap().aekiro_gameobject;
+		_postCreate(){
+			globalThis.Aekiro.getInstanceData(this.instance).aekiro_dialog = this;
+			this.wi = this.instance;
+			this.inst = this.instance;
 			//console.log("PostCreate dialog");
+		}
+
+		ensureGameObject(){
+			let inst = this.inst;
+			if(!inst){
+				try{
+					inst = this.instance;
+				}catch(_err){
+					return null;
+				}
+			}
+			if(!inst){
+				return null;
+			}
+			const currentGameObject = globalThis.Aekiro.getInstanceData(inst).aekiro_gameobject;
+			if(currentGameObject && currentGameObject !== this.aekiro_gameobject){
+				this.aekiro_gameobject = currentGameObject;
+				if(!this._isCloneListenerAttached && this.aekiro_gameobject.eventManager){
+					this.aekiro_gameobject.eventManager.on("cloned",() => {
+						this.isInit = false;
+						this.isCloseButtonSet = false;
+						this.setCloseButton();
+						this.onCreateInit();
+					},{"once":true});
+					this._isCloneListenerAttached = true;
+				}
+			}
+			return this.aekiro_gameobject;
 		}
 	
 		onCreateInit(){
-			//if(this.isInit)return;
-	
+			if(this.isInit || !this.wi || !this.ensureGameObject()){
+				return !!this.isInit;
+			}
+
 			
-			var map = this.GetObjectInstance().GetUnsavedDataMap();
+			var map = globalThis.Aekiro.getInstanceData(this.instance);
 			if(!map.audioSources){
 				map.audioSources = {};
 			}
 			var AudioSource = globalThis.AudioSource;
 			this.audioSources = map.audioSources;
-			this.audioSources.open = new AudioSource(this.openSound,this.GetRuntime());
-			this.audioSources.close = new AudioSource(this.closeSound,this.GetRuntime());
+			this.audioSources.open = new AudioSource(this.openSound,this.runtime);
+			this.audioSources.close = new AudioSource(this.closeSound,this.runtime);
 			
 			this.setVisible(false);
 			//this.wi.SetX(this.wi.GetLayer().GetViewport().getLeft() - this.wi.GetWidth() - 100);
 			this.wi.SetX(this.wi.GetLayer().GetViewport().getLeft());
 			this.wi.SetBboxChanged();
 			this.isInit = true;
+			return true;
 		}
 		
 		setCloseButton(){
-			if(!this.closeButtonUID)return;
+			if(this.isCloseButtonSet || !this.closeButtonUID)return;
 	
 			this.closeButton = this.goManager.gos[this.closeButtonUID];
+			
 			if(!this.closeButton){
-				console.error("ProUI-Dialog: Close button not found; Please check its name !");
+				//console.error("ProUI-Dialog: Close button not found; Please check its name !");
 				return;
 			}
 			
-			if(!this.closeButton.GetUnsavedDataMap().aekiro_button){
+			if(!globalThis.Aekiro.getInstanceData(this.closeButton).aekiro_button){
 				console.error("ProUI-Dialog: The close button needs to have a button behavior !");
 				return;
 			}
 	
 			var self = this;
-			this.closeButton.GetUnsavedDataMap().aekiro_button.callbacks.push(function(){
+			globalThis.Aekiro.getInstanceData(this.closeButton).aekiro_button.callbacks.push(function(){
 				self.close();
 			});
+			this.isCloseButtonSet = true;
 		}
 		
 		SetOwnScale(scale){
@@ -141,7 +176,7 @@
 			
 			var layer;
 			for (var i = 0, l= insts.length; i < l; i++) {
-				layer = insts[i].GetWorldInfo().GetLayer();
+				layer = insts[i].GetLayer();
 				if(layer!=mylayer && layers.indexOf(layer)==-1){
 					layers.push(layer);
 				}
@@ -170,7 +205,7 @@
 						this.wi.GetLayer().SetOwnScale(0.2);
 					}
 					this.wi.GetLayer().SetOpacity(0);
-					//this.GetRuntime().UpdateRender();
+					//this.runtime.UpdateRender();
 				}
 			}else if(this.openAnimation == 1){ //SlideDown
 				initY =  viewport.getTop() - this.wi.GetHeight()/2 - 100;
@@ -225,13 +260,13 @@
 			}
 			this.postClose();
 	
-			this.aekiro_dialogManager.addDialog(this.GetObjectInstance());
+			this.aekiro_dialogManager.addDialog(this.instance);
 	
 			//console.log("%cDIALOG %d : Open","color:blue", this.inst.uid);
 			this.isOpen = true;
-			this.Trigger(C3.Behaviors.aekiro_dialog.Cnds.onDialogOpened);
+			this._trigger(C3.Behaviors.aekiro_dialog.Cnds.onDialogOpened);
 			//in case the timescale of the game is not 1 (paused)
-			if(this.GetRuntime().GetTimeScale() != 1){
+			if(this.runtime.GetTimeScale() != 1){
 				this.aekiro_gameobject.setTimeScale(1);
 			}
 			//set the start position of the dialog, which depends on the type of the open animation
@@ -282,11 +317,11 @@
 			//*******************************************
 	
 			if(this.openAnimation>0){
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);
-				this._StartTicking();
+				this.tween["start"](this.runtime.GetWallTime()*1000);
+				this._setTicking(true);
 		
 				if(this.openAnimation == 5 || this.openAnimation == 6){ //ScaleDown|ScaleUp
-					this.tween_opacity["start"](this.GetRuntime().GetWallTime()*1000);
+					this.tween_opacity["start"](this.runtime.GetWallTime()*1000);
 				}
 			}else{
 				this.wi.SetXY(targetX,targetY);
@@ -329,8 +364,8 @@
 				return;
 			}
 			this.isOpen = false;
-			this.aekiro_dialogManager.removeDialog(this.GetObjectInstance());
-			this.Trigger(C3.Behaviors.aekiro_dialog.Cnds.onDialogClosed);
+			this.aekiro_dialogManager.removeDialog(this.instance);
+			this._trigger(C3.Behaviors.aekiro_dialog.Cnds.onDialogClosed);
 		
 			//**************************************	
 			//None|Reverse|SlideDown|SlideUp|SlideLeft|SlideRight|ScaleDown|ScaleUp
@@ -386,16 +421,16 @@
 				this.postClose();
 			}else if(this.closeAnimation==1){ //None
 				if(this.openAnimation == 5 || this.openAnimation == 6){ //ScaleDown|ScaleUp
-					this.tween_opacity["start"](this.GetRuntime().GetWallTime()*1000);
+					this.tween_opacity["start"](this.runtime.GetWallTime()*1000);
 				}
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);
-				this._StartTicking();
+				this.tween["start"](this.runtime.GetWallTime()*1000);
+				this._setTicking(true);
 			}else{ //SlideDown|SlideUp|SlideLeft|SlideRight|ScaleDown|ScaleUp
-				this.tween["start"](this.GetRuntime().GetWallTime()*1000);
+				this.tween["start"](this.runtime.GetWallTime()*1000);
 				if(this.closeAnimation == 6 || this.closeAnimation == 7){ //ScaleDown|ScaleUp
-					this.tween_opacity["start"](this.GetRuntime().GetWallTime()*1000);
+					this.tween_opacity["start"](this.runtime.GetWallTime()*1000);
 				}
-				this._StartTicking();
+				this._setTicking(true);
 			}
 	
 			//Play Sound
@@ -409,7 +444,7 @@
 			this.SetOwnScale(1);
 			this.SetOpacity(1);
 			this.setVisible(false);
-			//this.GetRuntime().UpdateRender();
+			//this.runtime.UpdateRender();
 	
 			var x = (viewport.getLeft() + viewport.getRight())/2;
 			var y = viewport.getTop() - this.wi.GetHeight()/2 -100;
@@ -417,15 +452,15 @@
 			this.wi.SetY(y);
 			this.wi.SetBboxChanged();
 			
-			this._StopTicking();
+			this._setTicking(false);
 		}
 		
 	
-		Tick(){
+		_tick(){
 			
 			var layer;
 			if(this.tween["isPlaying"]){
-				this.tween["update"](this.GetRuntime().GetWallTime()*1000);
+				this.tween["update"](this.runtime.GetWallTime()*1000);
 				
 				if(this.isScaleAnimation){ //ScaleDown|ScaleUp
 					layer = this.wi.GetLayer();
@@ -441,7 +476,7 @@
 	
 			//used only with ScaleDown|ScaleUp
 			if(this.tween_opacity["isPlaying"]){
-				this.tween_opacity["update"](this.GetRuntime().GetWallTime()*1000);
+				this.tween_opacity["update"](this.runtime.GetWallTime()*1000);
 				layer.SetOpacity(this.tweenObject.opacity);
 				
 				for (var i = 0, l = this.outLayers.length; i < l; i++) {
@@ -451,17 +486,24 @@
 	
 			//console.log("tick");
 			if(!this.tween["isPlaying"]){
-				this._StopTicking();
+				this._setTicking(false);
 			}
 		}
 	
-		Release(){
-			this.aekiro_dialogManager.removeDialog(this.GetObjectInstance());
+		_release(){
+			const inst = this.inst || this.instance;
+			if(inst){
+				this.aekiro_dialogManager.removeDialog(inst);
+			}
+			if(this._childrenRegisteredListener){
+				this.goManager.eventManager.removeListener(this._childrenRegisteredListener);
+				this._childrenRegisteredListener = null;
+			}
 			
-			super.Release();
+			super._release();
 		}
 	
-		SaveToJson(){
+		_saveToJson(){
 			return {
 				"openAnimation": this.openAnimation,
 				"openAnimTweenFunction": this.openAnimTweenFunction,
@@ -476,7 +518,7 @@
 			};
 		}
 	
-		LoadFromJson(o){
+		_loadFromJson(o){
 			this.openAnimation = o["openAnimation"];
 			this.openAnimTweenFunction = o["openAnimTweenFunction"];
 			this.openAnimDuration = o["openAnimDuration"];

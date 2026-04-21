@@ -1,7 +1,7 @@
 "use strict";
 
 {
-	const C3 = self.C3;
+	const C3 = globalThis.C3;
 	C3.Behaviors.aekiro_gridviewbind.Exps ={
 		index(){ return this.index; },
 		key(){ return this.key; },
@@ -10,7 +10,7 @@
 				return "";
 			}
 
-			var v = self["_"]["get"](this.value,key);
+			var v = globalThis["_"]["get"](this.value,key);
 			if(v == undefined){
 				return  "";
 			}else{

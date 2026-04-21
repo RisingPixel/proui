@@ -1,15 +1,15 @@
 "use strict";
 
 {
-	const SDK = self.SDK;
+	const SDK = globalThis.SDK;
 	
 	const BEHAVIOR_CLASS = SDK.Behaviors.aekiro_gridView;
 
 	BEHAVIOR_CLASS.Type = class aekiro_gridViewType extends SDK.IBehaviorTypeBase
 	{
-		constructor(sdkPlugin, iBehaviorType)
+		constructor()
 		{
-			super(sdkPlugin, iBehaviorType);
+			super();
 		}
 	};
 }
