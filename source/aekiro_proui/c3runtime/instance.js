@@ -32,6 +32,8 @@
 			
 			this.runtime.addEventListener("beforelayoutchange", () =>{
 				//console.log("beforelayoutchange");
+				// Cancel deferred initialise work from the previous layout so a stale pass
+				// cannot rebuild the graph after managers were reset for the new layout.
 				if (this._initialiseTimer !== null) {
 					clearTimeout(this._initialiseTimer);
 					this._initialiseTimer = null;
@@ -60,6 +62,8 @@
 			const token = ++this._initialiseToken;
 			// Build twice: immediate pass wires already-created instances, deferred pass catches instances created later in start-of-layout events.
 			const runPass = () => {
+				// Scene graph rebuilding is destructive; always rebuild from a clean
+				// name registry so parent/child links match the current layout contents.
 				this.goManager.gos = {};
 				this.goManager.registerGameObjects();
 				this.goManager.cleanSceneGraph();
@@ -77,6 +81,8 @@
 				if (this._initialiseToken !== token) {
 					return;
 				}
+				// A deferred second pass catches instances created slightly after layout
+				// start (e.g. startup events spawning UI), keeping naming and hierarchy in sync.
 				this.goManager.isInit = false;
 				runPass();
 				this.goManager.isInit = true;

@@ -11,6 +11,12 @@ ProUI is a UI toolkit packaged as Construct add-ons (plugins + behaviors) to bui
 - `doc/` — project documentation/demo assets.
 - `tools/release.zsh` — helper script to build `.c3addon` bundles and aggregate a versioned release zip.
 
+## Developer Docs
+
+- Canonical technical guide: [`doc/developer-guide.md`](doc/developer-guide.md)
+
+Contributor note: if you plan to modify runtime behavior code (especially under `source/*/c3runtime/`), read `doc/developer-guide.md` first.
+
 ## Add-ons included
 
 Core:
@@ -36,6 +42,11 @@ UI components/behaviors:
 - `aekiro_remoteSprite_dom`
 
 Most add-ons are currently versioned at `2.0.0.0` in `source/*/addon.json`.
+
+## Documentation
+
+- [Add-on anatomy guide (`aekiro_button` walkthrough)](doc/addon-anatomy.md)
+- [ProUI User Documentation](doc/ProUI_User_Documentation.md)
 
 ## Requirements
 
@@ -78,6 +89,10 @@ Before running a release, keep metadata aligned:
 - Update version fields in relevant `source/*/addon.json` files.
 - Confirm release naming format `ProUI_vX.XXX.zip`.
 - Verify the generated archive appears in `dist-collection/`.
+
+## Developer Docs
+
+- [Runtime architecture](doc/architecture.md)
 
 ## Contributing
 

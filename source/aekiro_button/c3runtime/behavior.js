@@ -72,7 +72,8 @@
 			}
 
 			if(stopClickPropagation){
-				// In propagation-stop mode we prioritize the top visible hit, then allow explicit opt-ins (ignoreInput == 0) to still receive down events.
+				// Route click to visual top-most target first to emulate UI hit-testing
+				// when multiple interactive widgets overlap.
 				targetInsts.sort(function(a, b) {
 					return a.GetTotalZElevation() - b.GetTotalZElevation();
 				});
@@ -86,6 +87,8 @@
 				}
 				
 				//add instances with ignoreInput = no;
+				// Legacy compatibility: explicit ignoreInput=0 instances still receive
+				// events even when they are not the top-most overlap.
 				for (const inst of targetInsts) {
 					if(globalThis.Aekiro.getInstanceData(inst).aekiro_button.ignoreInput == 0){
 						targetInsts2.push(inst);
