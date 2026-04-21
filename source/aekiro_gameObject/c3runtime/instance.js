@@ -178,6 +178,7 @@
 
 			if (!inst.GetUnsavedDataMap().aekiro_gameobject)return;
 
+			// Intercept world-info mutators so hierarchy-relative ("local") edits and direct world edits resolve through a single sync path.
 			wi.SetX_old = wi.SetX;
 			wi.SetX = function (x,isLocal){
 				var inst = this.GetInstance();
@@ -319,6 +320,7 @@
 			};
 
 			wi.GetX_old = wi.GetX;
+			// Preserve API shape by serving parent-space values only when callers explicitly request local coordinates.
 			wi.GetX = function (isLocal){
 				if(isLocal){
 					var inst = this.GetInstance();
@@ -540,6 +542,7 @@
 				return;
 			}
 
+			// Recompute locals from world state after external movements so child propagation stays stable.
 			var res = this.globalToLocal(this.instance,parent);
 			this.local.x = res.x;
 			this.local.y = res.y;

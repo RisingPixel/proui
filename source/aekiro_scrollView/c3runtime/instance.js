@@ -34,6 +34,7 @@
 				this.mouseWheelScrollSpeed = properties[11];
 			}
 			
+			// Elastic movement is only meaningful with momentum; without inertia we force clamped behavior for deterministic drag feel.
 			if(!this.inertia){ //If there's no inertia, then the movement can't be elastic.
 				this.movement = 0;
 			}
@@ -116,6 +117,7 @@
 			this.prevSelfLayerVisible = this.wi.GetLayer().IsVisible();
 			
 			try{
+				// Resolve linked parts early so invalid names/types fail before any scrolling state is wired.
 				this.vSlider = this.getPart(this.vSliderUID,"vertical slider");
 				this.vScrollBar = this.getPart(this.vScrollBarUID,"vertical scrollbar");
 				this.hSlider = this.getPart(this.hSliderUID,"horizontal slider");
@@ -132,6 +134,7 @@
 			
 
 	
+			// ---- Content and child wiring ----
 			//listening for content size changes
 			globalThis.Aekiro.getInstanceData(this.content).aekiro_scrollView = this;
 			this.contentWi.SetHeight_old2 = this.contentWi.SetHeight;
@@ -155,6 +158,7 @@
 			});
 	
 	
+			// ---- Initial bounds decisions ----
 			//Scrolling is deactivated if the content is too small to scroll
 			if(contentWi.GetHeight(true)<=this.wi.GetHeight(true)){
 				this.isContentScrollableV = false;
@@ -169,6 +173,7 @@
 			contentWi.SetY(this.wi.GetBoundingBox().getTop()  + (contentWi.GetY() - contentWi.GetBoundingBox().getTop()));
 			contentWi.SetBboxChanged();
 	
+			// Use layer-own texture because masking depends on blend operations inside this layer's isolated render target.
 			//Masking the content
 			// Force own texture is required for blend-mode masking of descendants:
 			// content uses blend mode 9 against this layer's render target.
@@ -254,6 +259,7 @@
 					
 
 				}else{
+					// Step scroll in non-inertia mode to keep clamped movement predictable and avoid elastic-style momentum.
 					this.contentWi.OffsetY(30*dir*this.mouseWheelScrollSpeed);
 				}
 				

@@ -39,6 +39,7 @@
 					this._initialiseTimer = null;
 				}
 				this._initialiseToken++;
+				// These registries survive globally, so purge per-layout state before loading a new scene graph.
 				this.goManager.isInit = false;
 				if(globalThis.aekiro_scrollViewManager){
 					for (const key in globalThis.aekiro_scrollViewManager.scrollViews) {
@@ -59,6 +60,7 @@
 			this.lastLayout = this.runtime.GetMainRunningLayout().GetName();*/
 			//console.log("ProUI: Initialise");
 			const token = ++this._initialiseToken;
+			// Build twice: immediate pass wires already-created instances, deferred pass catches instances created later in start-of-layout events.
 			const runPass = () => {
 				// Scene graph rebuilding is destructive; always rebuild from a clean
 				// name registry so parent/child links match the current layout contents.
@@ -146,6 +148,7 @@ const Tween = globalThis["TWEEN"];
 const C3 = globalThis.C3;
 
 globalThis.Aekiro = globalThis.Aekiro || {};
+// Shared caches/registries live on globalThis so independent plugins/behaviors can coordinate without strict init order.
 globalThis.Aekiro.instanceDataMap = globalThis.Aekiro.instanceDataMap || new WeakMap();
 globalThis.Aekiro.instanceDataByUid = globalThis.Aekiro.instanceDataByUid || new Map();
 globalThis.Aekiro.behaviorInstances = globalThis.Aekiro.behaviorInstances || new Map();
