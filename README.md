@@ -79,6 +79,10 @@ Before running a release, keep metadata aligned:
 - Confirm release naming format `ProUI_vX.XXX.zip`.
 - Verify the generated archive appears in `dist-collection/`.
 
+## Developer Docs
+
+- [Runtime architecture](doc/architecture.md)
+
 ## Contributing
 
 Contributions are welcome, especially compatibility fixes for newer Construct 3 versions.
