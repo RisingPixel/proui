@@ -37,6 +37,11 @@ UI components/behaviors:
 
 Most add-ons are currently versioned at `2.0.0.0` in `source/*/addon.json`.
 
+## Documentation
+
+- [Add-on anatomy guide (`aekiro_button` walkthrough)](doc/addon-anatomy.md)
+- [ProUI User Documentation](doc/ProUI_User_Documentation.md)
+
 ## Requirements
 
 - Construct 3 with SDK v2 add-on support.
