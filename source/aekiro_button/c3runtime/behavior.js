@@ -49,6 +49,8 @@
 			const stopClickPropagation = proui.stopClickPropagation;
 			const insts = this.getAllInstances();
 			const targetInsts = [];
+			// ---- Pointer routing pass ----
+			// Route from canvas CSS coordinates into each instance layer space so hit-testing stays correct across parallax/ZElevation.
 			for (const inst of insts) {
 				const wi = inst;
 				const beh = globalThis.Aekiro.getInstanceData(inst).aekiro_button;
@@ -61,6 +63,7 @@
 						targetInsts.push(inst);
 					}					
 				}else{
+					// Broadcast mode keeps legacy behavior where every hit instance can react without topmost filtering.
 					if(beh.OnAnyInputDown){
 						await beh.OnAnyInputDown(x,y,source);
 					}					
@@ -69,6 +72,7 @@
 			}
 
 			if(stopClickPropagation){
+				// In propagation-stop mode we prioritize the top visible hit, then allow explicit opt-ins (ignoreInput == 0) to still receive down events.
 				targetInsts.sort(function(a, b) {
 					return a.GetTotalZElevation() - b.GetTotalZElevation();
 				});
