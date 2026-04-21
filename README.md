@@ -11,6 +11,12 @@ ProUI is a UI toolkit packaged as Construct add-ons (plugins + behaviors) to bui
 - `doc/` — project documentation/demo assets.
 - `tools/release.zsh` — helper script to build `.c3addon` bundles and aggregate a versioned release zip.
 
+## Developer Docs
+
+- Canonical technical guide: [`doc/developer-guide.md`](doc/developer-guide.md)
+
+Contributor note: if you plan to modify runtime behavior code (especially under `source/*/c3runtime/`), read `doc/developer-guide.md` first.
+
 ## Add-ons included
 
 Core:

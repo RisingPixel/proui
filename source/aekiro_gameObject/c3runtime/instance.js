@@ -121,6 +121,8 @@
 				return;
 			}
 
+			// Scale children proportionally when the parent is resized so authored
+			// relative layout survives manual/editor/runtime size changes.
 			const safePrevWidth = prevWidth === 0 ? 0.1 : prevWidth;
 			const safePrevHeight = prevHeight === 0 ? 0.1 : prevHeight;
 			const fw = nextWidth / safePrevWidth;
@@ -183,9 +185,13 @@
 				if(!aekiro_gameobject)return;
 
 				if(isLocal && aekiro_gameobject.parent){
+					// Local-space edits should preserve hierarchy constraints by mutating
+					// cached local transform and then recomputing globals.
 					aekiro_gameobject.local.x = x;
 					aekiro_gameobject.updateGlobals();
 				}else{
+					// Global edits (or root objects) write world transform first, then
+					// recompute child-local values to keep both spaces consistent.
 					this.SetX_old(x);
 					aekiro_gameobject.updateLocals();
 				}

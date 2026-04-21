@@ -137,6 +137,8 @@
 			this.contentWi.SetHeight_old2 = this.contentWi.SetHeight;
 			this.contentWi.SetHeight = function (v,onlyNode){
 				this.SetHeight_old2(v,onlyNode);
+				// Content size can change after data binding/population; re-evaluate
+				// scroll bounds immediately to avoid dead zones or stuck sliders.
 				globalThis.Aekiro.getInstanceData(this.GetInstance()).aekiro_scrollView.OnSizeChanged();
 			};
 			this.contentWi.SetWidth_old2 = this.contentWi.SetWidth;
@@ -168,6 +170,8 @@
 			contentWi.SetBboxChanged();
 	
 			//Masking the content
+			// Force own texture is required for blend-mode masking of descendants:
+			// content uses blend mode 9 against this layer's render target.
 			this.wi.GetLayer().SetForceOwnTexture(true);
 			this.runtime.UpdateRender();
 				
@@ -265,6 +269,7 @@
 			
 			var isUnder = false;
 			if(this.aekiro_dialogManager){
+				// Respect modal dialog stack: widgets on lower layers must not receive input.
 				isUnder = this.aekiro_dialogManager.isInstanceUnderModal(this.wi.GetLayer().GetIndex());
 			}
 			
