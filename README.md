@@ -41,8 +41,6 @@ UI components/behaviors:
 - `aekiro_remoteSprite`
 - `aekiro_remoteSprite_dom`
 
-Most add-ons are currently versioned at `2.0.0.0` in `source/*/addon.json`.
-
 ## Documentation
 
 - [Add-on anatomy guide (`aekiro_button` walkthrough)](doc/addon-anatomy.md)
@@ -73,7 +71,7 @@ From the repo root:
 Example:
 
 ```bash
-./tools/release.zsh 2.001
+./tools/release.zsh 2.002
 ```
 
 What the script does:
@@ -113,4 +111,5 @@ Support Construct ecosystem maintenance via:
 
 ## Latest release
 
+- [2.001](https://github.com/RisingPixel/proui/releases/download/v2.0.1/ProUI_v2.001.zip) — Fix error in color set up.
 - [2.000](https://github.com/RisingPixel/proui/releases/download/v2.0.0/ProUI_v2.000.zip) — Migration to SDK 2.
