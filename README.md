@@ -98,6 +98,8 @@ Before running a release, keep metadata aligned:
 
 Contributions are welcome, especially compatibility fixes for newer Construct 3 versions.
 
+For packaging/versioning guidance, see [Release process](doc/release-process.md).
+
 If you open a PR:
 - Keep changes scoped to the relevant add-on(s).
 - Mention runtime/editor impact.
