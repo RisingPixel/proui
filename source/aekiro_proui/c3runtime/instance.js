@@ -1390,7 +1390,7 @@ globalThis.Aekiro.button = class aekiro_button extends globalThis.ISDKBehaviorIn
 	
 	parseColor(color,defaultColor){
 		if(color){
-			color = color.split(",").map((value) => parseInt(value, 10));
+			color = color.split(",").map((value) => (parseInt(value, 10) / 255));
 		}else{
 			if(defaultColor !== undefined){
 				color = defaultColor;
